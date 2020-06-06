@@ -144,8 +144,7 @@ void stack_push(ctx_t* ctx, item_t* x)
 }
 
 
-#define stack_pop()		 ctx->stack[ --ctx->stack_count ]
-
+#define stack_pop()		 ctx->stack[ --ctx->stack_count ]
 #define stack_top()		(ctx->stack[ctx->stack_count-1])
 
 //////////////////////////////////////////////////////////////////////////
@@ -222,16 +221,14 @@ static uint8_t check_ctx(ctx_t* ctx, const uint32_t new_item_count)
 // 		if (!ctx->queue) {
 // 			return 2;
 // 		}
-// 	}
-
+// 	}
 // 
 // 	if ( ctx->stack_sz+1 >= ctx->max_stack_sz ) {
 // 		ctx->max_stack_sz *= 2;
 // 		ctx->stack = (item_t**)realloc(ctx->stack, ctx->max_stack_sz * sizeof(*ctx->stack) );
 // 		if (!ctx->stack) {
 // 			return 3;
-// 		}	
-
+// 		}	
 // 	}
 	return 0;
 }
@@ -326,11 +323,21 @@ uint8_t convert_to_RPN(ctx_t* ctx, char* s)
 
 int main()
 {
+	item_t test[100];
+	
+	
 	uint32_t i, j;
 
 	ctx_t ctx;
 
 	char* input_s = "12345678901234567890+ x123 * 2 / ( 1 - 5 ) ^ 2 ^ 3";
+
+//	char input_s[1024];//[2*1024];	
+// 	for (i=0; i<sizeof(input_s)-1; ++i) {
+// 		input_s[i] = (i%2)? '+' : '1';
+// 	}
+// 	input_s[sizeof(input_s)-1] = 0;
+
 
 	if (!init_ctx(&ctx)) {
 
@@ -351,6 +358,8 @@ int main()
 			}
 		}
 	}
+	
+	//memcpy(test, ctx.item, min(sizeof(test)/sizeof(test[0]), ctx.item_count*sizeof(item_t)) );
 
 	deinit_ctx(&ctx);
 
