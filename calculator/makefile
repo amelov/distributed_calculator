@@ -10,9 +10,10 @@ PROGRAM = calculator
 C_FILES := $(wildcard *.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
-CFLAGS = -Wall -pedantic
+CFLAGS = -Wall -pedantic 
+#-DMAKE_TEST
 LDFLAGS =
-LDLIBS = -lm
+LDLIBS = -lm -ljansson
 
 all: $(PROGRAM)
 

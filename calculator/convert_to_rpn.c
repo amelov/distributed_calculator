@@ -1,5 +1,4 @@
 /* 
-Based on:	http://rosettacode.org/wiki/Parsing/Shunting-yard_algorithm#C
 
 operator 	precedence 	associativity 	operation
 ^ 			4 			right 			exponentiation
@@ -18,12 +17,18 @@ operator 	precedence 	associativity 	operation
 #include <stdio.h>
 #include <stdlib.h>
 
-//////////////////////////////////////////////////////////////////////////
-
-
-
 
 #include "common.h"
+
+#ifdef MAKE_TEST
+	#include "context.h"
+	#include <string.h>
+#endif
+
+
+//#define DEBUG_PRINTF
+static void PRINT(char* s, ctx_t* ctx);
+
 
 
 
@@ -31,7 +36,7 @@ operator 	precedence 	associativity 	operation
 
 static uint8_t ismathoperation(const char c)
 {
-	return (c=='+') || (c=='-') || (c=='*') || (c=='/') || (c=='^');
+	return (c=='+') || (c=='-') || (c=='*') || (c=='/') || (c=='^') || (c=='(') || (c==')');
 }
 
 
@@ -49,7 +54,7 @@ static int parse_item(char **p_s, item_t* i)
 
 	if (isdigit(*s)) {
 
-		i->t = NUM_T;		
+		i->t = NUMBER_T;		
 		while ( (*s) && isalnum(*s) ) {
 			i->len++;
 			s++;
@@ -69,19 +74,19 @@ static int parse_item(char **p_s, item_t* i)
 
 	} else {
 
+		i->right_associative = 0;
+
 		switch (*s) {
 		case '+':
 		case '-':
 			i->t = OPERATION_T;
 			i->precedence = 2;
-			i->right_associative = 1;
 			break;
 
 		case '*':
 		case '/':
 			i->t = OPERATION_T;
 			i->precedence = 3;
-			i->right_associative = 0;
 			break;
 
 
@@ -109,259 +114,202 @@ static int parse_item(char **p_s, item_t* i)
 
 
 
-//#define output_push(x)	 ctx->queue[ ctx->queue_sz++ ] = &x
+//////////////////////////////////////////////////////////////////////////
 
-void output_push(ctx_t* ctx, item_t* x) 
-{
-	if (ctx->queue_count>=ctx->max_queue_sz) {
-		ctx->max_queue_sz *= 2;
-		ctx->queue = (item_t*)realloc(ctx->queue, ctx->max_queue_sz * sizeof(*ctx->queue) );
-		if (!ctx->queue) {
-			ctx->err_str = "not enough memory";
-			return;
-			//return 2;	
-		}
-	}
-	memcpy(&ctx->queue[ ctx->queue_count++ ], x, sizeof(*x));
-}
+#define out_push(x) stack_push_back(&ctx->queue, x)
+#define out_sz()    stack_size(&ctx->queue)
 
 
-#define stack_sz()		 ctx->stack_count
-
-//#define stack_push(x)	 ctx->stack[ ctx->stack_count++ ] = x
-void stack_push(ctx_t* ctx, item_t* x)
-{
-	if (ctx->stack_count>=ctx->max_stack_sz) {
-		ctx->max_stack_sz *= 2;
-		ctx->stack = (item_t*)realloc(ctx->stack, ctx->max_stack_sz * sizeof(*ctx->stack) );
-		if (!ctx->stack) {
-			ctx->err_str = "not enough memory";
-			return;
-			//return 2;	
-		}
-	}
-	memcpy(&ctx->stack[ ctx->stack_count++ ], x, sizeof(*x));
-}
-
-
-#define stack_pop()		 ctx->stack[ --ctx->stack_count ]
-#define stack_top()		(ctx->stack[ctx->stack_count-1])
+#define stack_push(x)	stack_push_back(&ctx->stack, x)
+#define stack_pop()		stack_pop_back(&ctx->stack)
+#define stack_peek()		((item_t*)stack_top(&ctx->stack))
+#define stack_sz()		stack_size(&ctx->stack)
 
 //////////////////////////////////////////////////////////////////////////
 
-void PRINT(ctx_t* ctx)
+
+
+uint8_t convert_to_rpn(ctx_t* ctx, char* s)
 {
-//	int i, j;
-	printf("\r\nstack: ");
+	item_t temp_item;
 
-// 	for (i=0; i<ctx->stack_count; i++) {
-// 		if (i) printf(",");
-// 		printf("%c ", ctx->stack[i].p[0]);
-// 	}
-// 
-// 	printf("\r\nqueue: ");
-// 	for (i=0; i<ctx->queue_count; i++) {
-// 		if (i) printf(" ");
-// 		for (j=0; j<ctx->queue[i].len; j++) {
-// 			printf("%c", ctx->queue[i].p[j]);
-// 		}
-// 	}
-	printf("\r\n");
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-
-static uint8_t round_ctx(ctx_t* ctx)
-{
-	ctx->queue_count = ctx->stack_count = 0;
-	ctx->err_str = NULL;
-	return 0;
-}
-
-
-static uint8_t init_ctx(ctx_t* ctx)
-{
-	ctx->item_count = INIT_ELEMENT_COUNT;
-	ctx->item = (item_t*)malloc(ctx->item_count * sizeof(*ctx->item) );
-	if (!ctx->item) {
-		return 1;
-	}
-
-	ctx->max_queue_sz = INIT_STACK_COUNT;
-	ctx->queue = (item_t*)malloc(ctx->max_queue_sz * sizeof(*ctx->queue) );
-	if (!ctx->queue) {
-		return 2;
-	}
-
-	ctx->max_stack_sz = INIT_STACK_COUNT;
-	ctx->stack = (item_t*)malloc(ctx->max_stack_sz * sizeof(*ctx->stack) );
-	if (!ctx->stack) {
-		return 3;
-	}
-
-	return round_ctx(ctx);
-}
-
-
-static uint8_t check_ctx(ctx_t* ctx, const uint32_t new_item_count)
-{
-	ctx->err_str = 0;
-	if (new_item_count>=ctx->item_count) {
-		ctx->item_count *= 2;
-		ctx->item = (item_t*)realloc(ctx->item, ctx->item_count * sizeof(*ctx->item) );
-		if (!ctx->item) {
-			return 1;
-		}
-	}
-
-// 	if ( ctx->queue_sz+1 >= ctx->max_queue_sz ) {
-// 		ctx->max_queue_sz *= 2;
-// 		ctx->queue = (item_t**)realloc(ctx->queue, ctx->max_queue_sz * sizeof(*ctx->queue) );
-// 		if (!ctx->queue) {
-// 			return 2;
-// 		}
-// 	}
-// 
-// 	if ( ctx->stack_sz+1 >= ctx->max_stack_sz ) {
-// 		ctx->max_stack_sz *= 2;
-// 		ctx->stack = (item_t**)realloc(ctx->stack, ctx->max_stack_sz * sizeof(*ctx->stack) );
-// 		if (!ctx->stack) {
-// 			return 3;
-// 		}	
-// 	}
-	return 0;
-}
-
-
-static void deinit_ctx(ctx_t* ctx)
-{
-	free(ctx->item);
-	free(ctx->queue);
-	free(ctx->stack);
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-
-uint8_t convert_to_RPN(ctx_t* ctx, char* s)
-{
-	uint32_t i = 0;
-	
+	PRINT(s, ctx);
 
 	while (*s) {
 
-		if (parse_item(&s, &ctx->item[i])) {
+		if (parse_item(&s, &temp_item)) {
 
-			switch (ctx->item[i].t) {
-			case NUM_T:
+			switch (temp_item.t) {
+			case NUMBER_T:
 			case VARIABLE_T:
-				output_push(ctx, &(ctx->item[i]));
-				PRINT(ctx);
+				if ( out_push(&temp_item) ) {
+					ctx->err_str = "not enough memory";
+				}
+				PRINT(s, ctx);
 				break;
 
 			case OPERATION_T:
 				{
-					while ( (stack_sz()>0) /*&& operators.TryGetValue(stack.Peek(), out var op2)*/) {
-						int c = (stack_top().precedence < ctx->item[i].precedence);
-						if ( (c<0) || !ctx->item[i].right_associative && (c<=0) ) {
-							output_push(ctx, &stack_pop() );
+					while ( (stack_sz()>0) && (stack_peek()->t == OPERATION_T) ) {
+
+						int c = temp_item.precedence - stack_peek()->precedence;
+
+						if ( ((c <0) || (!temp_item.right_associative)) && (c<=0)  ) {
+							out_push( stack_pop() );
 						} else {
 							break;
 						}
+						PRINT(s, ctx);
 					}
-					stack_push(ctx, &ctx->item[i]);
-					PRINT(ctx);
+					stack_push(&temp_item);
+					PRINT(s, ctx);
 				}
 				break;
 
 			case OPEN_BRACE_T:
-				stack_push(ctx, &ctx->item[i]);
-				PRINT(ctx);
+				stack_push(&temp_item);
+				PRINT(s, ctx);
 				break;
 
 			case CLOSE_BRACE_T:
 				{
-					while (stack_sz()>0) {
-						if (stack_top().t != OPEN_BRACE_T) {
-							output_push(ctx, &stack_pop() );
+					while (stack_sz()) {
+						if ( stack_peek()->t != OPEN_BRACE_T) {
+							out_push( stack_pop() );
 						} else {
 							stack_pop();
 							break;
 						}
 					}
-					PRINT(ctx);
+					PRINT(s, ctx);
 				}
-				//if (top != "(") throw new ArgumentException("No matching left parenthesis.");
+				// TODO: if (top != "(") throw new ArgumentException("No matching left parenthesis.");
+				break;
+			case UNDEF_T:
+				ctx->err_str = "Parse error!";
+				return 1;
 				break;
 			}
-		}
-
-		if (check_ctx(ctx, ++i)) {
-			ctx->err_str = "not enough memory";
-			break;
 		}
 	}
 
 	while (stack_sz()>0) {
-		if (stack_top().t != OPERATION_T) { 
+		if ( stack_peek()->t != OPERATION_T ) { 
 			ctx->err_str = "No matching right parenthesis."; 
 			break;
 		}
-		output_push(ctx, &stack_pop() );
+		out_push( stack_pop() );
 	}
 
-	ctx->item[i].t = UNDEF_T;
-
-	PRINT(ctx);
+	PRINT(s, ctx);
 
 	return (ctx->err_str != NULL);
 }
 
+
+
 //////////////////////////////////////////////////////////////////////////
 
 
-int main()
+void PRINT(char* s, ctx_t* ctx)
 {
-	item_t test[100];
-	
-	
+#ifdef DEBUG_PRINTF
+	item_t* p;
 	uint32_t i, j;
 
-	ctx_t ctx;
+	printf("\r\ntext : %s:", s);
+	printf("\r\nstack: ");
 
-	char* input_s = "12345678901234567890+ x123 * 2 / ( 1 - 5 ) ^ 2 ^ 3";
+	for (i=0; i<stack_sz(); i++) {
+		//if (i) printf(" ");
+		printf("%c ", ((item_t*)stack_element_at(&ctx->stack, i))->p[0] );
+	}
 
-//	char input_s[1024];//[2*1024];	
-// 	for (i=0; i<sizeof(input_s)-1; ++i) {
-// 		input_s[i] = (i%2)? '+' : '1';
-// 	}
-// 	input_s[sizeof(input_s)-1] = 0;
-
-
-	if (!init_ctx(&ctx)) {
-
-		if (!round_ctx(&ctx)) {
-
-			if (!convert_to_RPN(&ctx, input_s)) {
-
-				printf("\r\nConvert OK:\r\n \"%s\"", input_s);
-
-				printf("\r\nRESULT:");
-				for (i=0; i<ctx.queue_count; i++) {
-					if (i) printf(" ");
-					for (j=0; j<ctx.queue[i].len; j++) {
-						printf("%c", ctx.queue[i].p[j]);
-					}
-				}
-
-			}
+	printf("\r\nqueue: ");
+	for (i=0; i<stack_size(&ctx->queue); i++) {
+		if (i) printf(" ");
+		p = stack_element_at(&ctx->queue, i);
+		for (j=0; j<p->len; j++) {
+			printf("%c", p->p[j]);
 		}
 	}
-	
-	//memcpy(test, ctx.item, min(sizeof(test)/sizeof(test[0]), ctx.item_count*sizeof(item_t)) );
-
-	deinit_ctx(&ctx);
-
-	return 0;
+	printf("\r\n");
+#endif
 }
+
+#ifdef MAKE_TEST
+
+void get_result_string(ctx_t* c, stack_t* out_stack)
+{
+	size_t i, j;
+	char s_eol = 0;
+	char s_separator = ' ';
+
+	stack_create(out_stack, sizeof(uint8_t), stack_size(&c->queue));
+	for (i=0; i<stack_size(&c->queue); ++i) {
+
+		item_t* p = (item_t*)stack_element_at(&c->queue, i);
+
+		if (i) {
+			stack_push_back(out_stack, &s_separator);
+		}
+		
+		for (j=0; j<p->len; ++j) {
+			stack_push_back(out_stack, &p->p[j]);
+		}
+		
+	}
+	stack_push_back(out_stack, &s_eol);
+}
+
+
+uint8_t convert_to_rpn_TEST()
+{
+	uint32_t r_code = 0;
+	ctx_t ctx;
+	stack_t res_stack;
+
+	struct {
+		char* in_str;
+		char* out_str;
+	} test_case[] = { 
+
+			{"1+2*3", "1 2 3 * +"},
+			{"(1+2)*(3-4)", "1 2 + 3 4 - *"},
+			{"1+(2*(3-4))", "1 2 3 4 - * +"},
+			{"3 * x - z + 2 * y", "3 x * z - 2 y * +"},
+			{"3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3", "3 4 2 * 1 5 - 2 3 ^ ^ / +"}, 
+			
+			{0, 0}
+	};
+	
+	uint32_t tid = 0;
+	while (test_case[tid].in_str) {
+		init_ctx(&ctx);
+		if (!convert_to_rpn(&ctx, test_case[tid].in_str)) {
+
+			get_result_string(&ctx, &res_stack);
+
+			if ( stack_size(&res_stack) ) {
+
+				if (0==strcmp(test_case[tid].out_str, (char*)stack_element_at(&res_stack, 0))) {
+					//printf("convert_to_rpn_TEST(#%d): ok\r\n", tid);
+					r_code++;
+				} else {
+					printf("convert_to_rpn_TEST(#%d): ERROR wait(%s) != result(%s)\r\n", tid, test_case[tid].out_str, (char*)stack_element_at(&res_stack, 0));
+				}
+			}
+
+			stack_destroy(&res_stack);
+		} else {
+			printf("convert error: %s\r\n", ctx.err_str);
+		}
+		deinit_ctx(&ctx);
+		++tid;
+	}	
+
+	printf("convert_to_rpn_TEST() -> %s\r\n", (!r_code)||(r_code!=tid)? "ERROR" : "ok");
+	return (r_code != tid);
+}
+
+#endif
