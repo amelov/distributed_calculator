@@ -6,7 +6,7 @@ ifneq (,)
 This makefile requires GNU Make.
 endif
 
-PROGRAM = luv_test
+PROGRAM = calculator
 C_FILES := $(wildcard *.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
