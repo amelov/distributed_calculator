@@ -17,7 +17,7 @@
 
 
 //#define DEBUG_PRINTF
-static void PRINT(stack_t* s);
+static void PRINT(mstack_t* s);
 
 
 static char* get_string(item_t* p)
@@ -40,7 +40,7 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 
 	uint8_t r_code = 0;
 
-	stack_t stack;
+	mstack_t stack;
 	stack_create(&stack, 16, sizeof(NUM_t));
 
 	for (i=0; (r_code==0) && (i<stack_size(&ctx->queue)); ++i){
@@ -168,7 +168,7 @@ uint8_t calculate(char* input_str, var_store_t* var_store, NUM_t* res, char** er
 //////////////////////////////////////////////////////////////////////////
 
 
-void PRINT(stack_t* s)
+void PRINT(mstack_t* s)
 {
 #ifdef DEBUG_PRINTF
 	size_t j;

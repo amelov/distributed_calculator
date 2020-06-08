@@ -2,7 +2,7 @@
 #pragma once
 
 
-#include "stack.h"
+#include "mstack.h"
 
 //#define MAKE_TEST
 
@@ -44,8 +44,8 @@ typedef struct {
 typedef struct {
 
 	// for RPN converters, result store in <queue>
-	stack_t stack;
-	stack_t queue;
+	mstack_t stack;
+	mstack_t queue;
 
 	char* err_str;
 } ctx_t;

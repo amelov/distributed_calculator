@@ -8,7 +8,7 @@
 
 #include "common.h"
 
-typedef stack_t var_store_t;
+typedef mstack_t var_store_t;
 
 void var_init(var_store_t* vs, const size_t var_count);
 void var_add(var_store_t* vs, const char* id, NUM_t v);

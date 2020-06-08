@@ -6,14 +6,14 @@ ifneq (,)
 This makefile requires GNU Make.
 endif
 
-PROGRAM = calculator
+PROGRAM = luv_test
 C_FILES := $(wildcard *.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
 CFLAGS = -Wall -pedantic 
 #-DMAKE_TEST
 LDFLAGS =
-LDLIBS = -lm -ljansson
+LDLIBS = -lm -ljansson -luv
 
 all: $(PROGRAM)
 

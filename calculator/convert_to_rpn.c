@@ -122,7 +122,7 @@ static int parse_item(char **p_s, item_t* i)
 
 #define stack_push(x)	stack_push_back(&ctx->stack, x)
 #define stack_pop()		stack_pop_back(&ctx->stack)
-#define stack_peek()		((item_t*)stack_top(&ctx->stack))
+#define stack_peek()		((item_t*)mstack_top(&ctx->stack))
 #define stack_sz()		stack_size(&ctx->stack)
 
 //////////////////////////////////////////////////////////////////////////
@@ -239,7 +239,7 @@ void PRINT(char* s, ctx_t* ctx)
 
 #ifdef MAKE_TEST
 
-void get_result_string(ctx_t* c, stack_t* out_stack)
+void get_result_string(ctx_t* c, mstack_t* out_stack)
 {
 	size_t i, j;
 	char s_eol = 0;
@@ -267,7 +267,7 @@ uint8_t convert_to_rpn_TEST()
 {
 	uint32_t r_code = 0;
 	ctx_t ctx;
-	stack_t res_stack;
+	mstack_t res_stack;
 
 	struct {
 		char* in_str;
