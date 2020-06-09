@@ -1,11 +1,5 @@
-	
-#include <memory.h>
-#include <malloc.h>
 
 #include <stdint.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 
 #include "common.h"
@@ -20,7 +14,6 @@
 #include "uv_proc.h"
 
 
-//#define UV_EXTERN
 #include <uv.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -100,10 +93,8 @@ int main()
 
 	uint16_t server_port = 7000;
 
-	uv_loop_t *loop = uv_default_loop();
-
-	if (!start_uv_tcp_server(loop, server_port)) {
-		return uv_run(loop, UV_RUN_DEFAULT);
+	if (!start_uv_tcp_server(server_port)) {
+		return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 
 

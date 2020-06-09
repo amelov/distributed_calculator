@@ -12,29 +12,48 @@
 extern char* input_json_msg_handler(const char* json_str);
 
 
-uv_loop_t * loop = NULL;
-uv_tcp_t server;
-
-static char* rcv_data = NULL;
-static size_t rcv_data_len = 0;
+static uv_tcp_t server;
 
 
-static void free_receiver_ctx()
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct client_ctx_t {
+    uv_tcp_t handle;
+    size_t   data_len;
+    char* data;
+} client_ctx_t;
+
+
+
+client_ctx_t* init_client_ctx()
 {
-    rcv_data_len = 0;
-    free(rcv_data);
-    rcv_data = NULL;
+    client_ctx_t* r_code = malloc(sizeof(client_ctx_t));
+    r_code->data_len = 0;
+    r_code->data = NULL;
+    return r_code;
 }
 
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+void destroy_client_ctx(client_ctx_t* c)
+{
+    if (c) {
+        c->data_len = 0;
+        free(c->data);
+        c->data = NULL;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) 
+{
     buf->base = (char*)malloc(suggested_size);
     buf->len = suggested_size;
 }
 
 
-
-void on_write_complete(uv_write_t *req, int status) {
+void on_write_complete(uv_write_t *req, int status) 
+{
     if (status) {
         fprintf(stderr, "Write error %s\n", uv_strerror(status));
     }
@@ -42,32 +61,38 @@ void on_write_complete(uv_write_t *req, int status) {
 }
 
 
+void on_close_complete(uv_handle_t *client)
+{
+    printf("on_close_complete\r\n");
+}
 
-void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+
+void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
+{
     if (nread < 0) {
+
+        destroy_client_ctx((client_ctx_t*)client);
+
         if (nread != UV_EOF) {
             fprintf(stderr, "Read error %s\n", uv_err_name(nread));
-		
-            free_receiver_ctx();
-            //printf("close: %u", client);	
-
             uv_close((uv_handle_t*) client, NULL);
         }
+
     } else if (nread > 0) {
 
-		//printf("%u recv: %lu\r\n", client, nread);
-	
+        client_ctx_t* c = (client_ctx_t*)client;
+
 		{
-			rcv_data_len += nread;
-			rcv_data = realloc(rcv_data, rcv_data_len+1);
-			memcpy(rcv_data+rcv_data_len-nread, buf->base, nread);
-            rcv_data[rcv_data_len] = 0;
+			c->data_len += nread;
+			c->data = (char*)realloc(c->data, c->data_len+1);
+			memcpy(c->data+c->data_len-nread, buf->base, nread);
+            c->data[c->data_len] = 0;
 
-            printf("rcv: %s\r\n", rcv_data);
+            printf("rcv: %s\r\n", c->data);
 
-            if (is_valid_json(rcv_data)) {
+            if (is_valid_json(c->data)) {
 
-                char* result_str = input_json_msg_handler(rcv_data);
+                char* result_str = input_json_msg_handler(c->data);
 
                 if (result_str) {
                     uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
@@ -76,7 +101,6 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
                     free(result_str);
                 }
 
-                free_receiver_ctx();
             }
 
 		}
@@ -90,7 +114,6 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 }
 
 
-
 void on_new_connection(uv_stream_t *server, int status) 
 {
     if (status < 0) {
@@ -98,32 +121,26 @@ void on_new_connection(uv_stream_t *server, int status)
         return;
     }
                               
-    uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-    uv_tcp_init(loop, client);
+    client_ctx_t *client_ctx = init_client_ctx();
 
-    if (uv_accept(server, (uv_stream_t*) client) == 0) {
-		uv_tcp_keepalive(client, 1, 10);
-	
-		//printf("new connect: %u\r\n", client);
-        free_receiver_ctx();
-        
-        uv_read_start((uv_stream_t*)client, alloc_buffer, on_read_complete);
-    } else {
-        uv_close((uv_handle_t*) client, NULL);
+    if (client_ctx) {
+        uv_tcp_init(uv_default_loop(), &client_ctx->handle);
+
+        if (uv_accept(server, (uv_stream_t*)&client_ctx->handle) == 0) {
+    		uv_tcp_keepalive(&client_ctx->handle, 1, 50);
+            uv_read_start((uv_stream_t*)&client_ctx->handle, alloc_buffer, on_read_complete);
+        } else {
+            uv_close((uv_handle_t*) &client_ctx->handle, NULL);
+        }
     }
 }
 
 
-
-
-
-
-uint8_t start_uv_tcp_server(uv_loop_t *main_loop, const uint16_t server_port)
+uint8_t start_uv_tcp_server(const uint16_t server_port)
 {
 	struct sockaddr_in addr;
-	loop = main_loop;
 
-	uv_tcp_init(loop, &server);
+	uv_tcp_init(uv_default_loop(), &server);
 	uv_ip4_addr("0.0.0.0", server_port, &addr);
 
 	uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
