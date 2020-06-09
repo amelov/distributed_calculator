@@ -6,6 +6,8 @@
 
 //#define MAKE_TEST
 
+#define SERVER_PORT 7000
+
 #define INIT_QUEUE_COUNT	16
 #define INIT_STACK_COUNT	32
 
