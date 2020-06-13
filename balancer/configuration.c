@@ -5,7 +5,7 @@
 #include <uv.h>
 
 static mstack_t calc_host = {0};
-
+static uint16_t server_port = SERVER_PORT;
 
 uint8_t load_config(const char* fn)
 {
@@ -15,6 +15,12 @@ uint8_t load_config(const char* fn)
 	stack_create(&calc_host, sizeof(client_descr_t), 16);
 
 	if (root) {
+
+		json_t *server_v   = json_object_get(root, "server_port");
+		if ( server_v && json_is_number(server_v) ) {
+			server_port = json_integer_value(server_v);
+		}
+
 
 		json_t *calcs = json_object_get(root, "calculator");
 		if (calcs && json_is_array(calcs)) {
@@ -33,7 +39,8 @@ uint8_t load_config(const char* fn)
 						a.addr.sin_family = AF_INET;
 						a.addr.sin_addr.s_addr = inet_addr( json_string_value(ip_v) );
 						a.addr.sin_port = htons( json_integer_value(port_v) );
-						a.state = UINT32_MAX;
+						a.state = UNDEF_STATE;
+						//buf_create(&a.rx);
 						stack_push_back(&calc_host, &a);
 					}
 				}
@@ -56,6 +63,11 @@ client_descr_t* get_calc_host(const size_t idx)
 	return NULL;
 }
 
+size_t get_calc_host_count()
+{
+	return stack_size(&calc_host);
+}
+
 
 client_descr_t* find_client_by_stream(uv_stream_t* c)
 {
@@ -68,4 +80,10 @@ client_descr_t* find_client_by_stream(uv_stream_t* c)
 		}
 	}
 	return NULL;
+}
+
+
+uint16_t get_server_port()
+{
+	return server_port;
 }

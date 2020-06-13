@@ -12,7 +12,6 @@ typedef struct mstack_t {
 	void* _data_ptr;
 } mstack_t;
 
-extern mstack_t zero_stack;
 
 //////////////////////////////////////////////////////////////////////////
 

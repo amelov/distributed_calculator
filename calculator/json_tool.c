@@ -6,23 +6,6 @@
 #include <jansson.h>
 
 
-uint8_t is_valid_json(const char* s)
-{
-	size_t open_brace = 0;
-	size_t close_brace = 0;
-
-	while (*s) {
-		if ('{' ==*s) {
-			open_brace++;
-		} else if ('}' ==*s) {
-			close_brace++;
-		}
-		s++;
-	}
-	return (open_brace) && (open_brace==close_brace);
-}
-
-
 uint8_t parse_incoming_json(const char* in_msg, session_data_t* s)
 {
 	uint8_t r_code = 1;
@@ -60,6 +43,8 @@ uint8_t parse_incoming_json(const char* in_msg, session_data_t* s)
 					}
 				}
 			}
+		} else {
+			printf("no \"expressions\" object!\r\n");
 		}
 
 
@@ -101,7 +86,7 @@ char* create_outgoing_json(session_data_t* sess)
 
 		size_t i = 0;
 
-		{
+		if (var_size(&sess->var)) {
 			json_t *params_obj = json_object();
 			for (i=0; i<var_size(&sess->var); ++i) {
 				char* key;
@@ -116,7 +101,7 @@ char* create_outgoing_json(session_data_t* sess)
 		}
 
 
-		{
+		if (stack_size(&sess->result)) {
 			json_t *json_results = json_array();
 			for (i=0; i<stack_size(&sess->result); ++i) {
 				char* exp_str = *((char**)stack_element_at(&sess->expression, i));

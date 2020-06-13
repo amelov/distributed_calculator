@@ -6,9 +6,6 @@
 #include <stdio.h>
 
 
-mstack_t zero_stack = {0, 0, 0, NULL};
-
-
 
 uint8_t stack_create(mstack_t* s, const uint32_t element_size, const uint32_t element_count)
 {

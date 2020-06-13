@@ -6,7 +6,9 @@
 
 //#define MAKE_TEST
 
-#define SERVER_PORT 7000
+#define DEFAULT_SERVER_PORT	7000
+#define MAX_CLIENT_COUNT	128
+
 
 #define INIT_QUEUE_COUNT	16
 #define INIT_STACK_COUNT	32
@@ -16,6 +18,9 @@
 #define MAX_NUM_LENGTH (10+1)
 
 #define MAX_NUM_T_TO_STR_LEN 20		/* strlen( itoa(NUM_t) )*/
+
+
+#define MESSAGE_DELIMITER "\n"
 
 typedef long long	NUM_t;
 

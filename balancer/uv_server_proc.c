@@ -1,40 +1,41 @@
 
+#include "uv_server_proc.h"
+
+
 #include <unistd.h>
 #include <string.h>
 
 #include "configuration.h"
-#include "uv_proc.h"
+
 
 #include "json_common.h"
+#include "uv_calc_client.h"
+#include "mbuf.h"
 
 
 static uv_tcp_t server;
 
-char* input_json_msg_handler(const char* json_str);
 //////////////////////////////////////////////////////////////////////////
 
-typedef struct receive_ctx_t {
-    size_t   buf_len;
-    char* buf;
-} receive_ctx_t;
+typedef struct socket_ctx_t {
+    buf_t rx;
+} socket_ctx_t;
 
 
 
-receive_ctx_t* init_client_ctx()
+socket_ctx_t* init_client_ctx()
 {
-    receive_ctx_t* r_code = (receive_ctx_t*)calloc(1, sizeof(receive_ctx_t));
-    r_code->buf_len = 0;
-    r_code->buf = NULL;
+    socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
+    buf_create(&r_code->rx);
     return r_code;
 }
 
 
-void destroy_client_ctx(receive_ctx_t* c)
+void destroy_client_ctx(socket_ctx_t* c)
 {
     if (c) {
-        c->buf_len = 0;
-        free(c->buf);
-        c->buf = NULL;
+        buf_destroy(&c->rx);
+        free(c);
     }
 }
 
@@ -59,8 +60,27 @@ void on_write_complete(uv_write_t *req, int status)
 void on_close_complete(uv_handle_t *client)
 {
     printf("on_close_complete\r\n");
-    destroy_client_ctx((receive_ctx_t*)client->data);
+    destroy_client_ctx((socket_ctx_t*)client->data);
     free(client);
+}
+
+
+client_descr_t* select_calc_client()
+{
+    static size_t base_calculator_id = 0;
+
+    client_descr_t* r_code = NULL;
+
+    for (int i=0; i<get_calc_host_count(); i++) {
+        client_descr_t* p = get_calc_host((base_calculator_id + i) % get_calc_host_count());
+        if (p->state == 0) {
+            base_calculator_id++;
+            base_calculator_id %= get_calc_host_count();
+            r_code = p;
+            break;
+        }
+    }
+    return r_code;
 }
 
 
@@ -74,31 +94,33 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 
     } else if (nread > 0) {
 
-        receive_ctx_t* c = (receive_ctx_t*)client->data;
+        socket_ctx_t* c = (socket_ctx_t*)client->data;
 
-	if (c) {
-		c->buf_len += nread;
-		c->buf = (char*)realloc(c->buf, c->buf_len+1);
-		memcpy(c->buf+c->buf_len-nread, buf->base, nread);
-		c->buf[c->buf_len] = 0;
+    	if (c) {
 
-		printf("rcv: %s\r\n", c->buf);
+            buf_add(&c->rx, buf->base, nread);
+    		printf("SRV: r: %s\r\n", c->rx.data);
 
-		if (is_valid_json(c->buf)) {
+            char* input_msg = NULL;
+            char* b_i = c->rx.data;
 
-                	uv_work_t* handle = malloc(sizeof(*handle));
+            while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
 
-	                handle->data = malloc(c->buf_len+1);
-        	        memcpy(handle->data, c->buf, c->buf_len);
+                printf("SRV: find msg -> [%s]\r\n", input_msg);
 
-			
-
-
-			//int r = uv_queue_work(uv_default_loop(), handle, calculation_work_cb, after_calculation_work_cb);
+                client_descr_t* p = select_calc_client();
+                if (p) {
+                    printf("SRV: active calculator: %d\r\n", p->dbg_id);
+                    send_to_calc(p, client, input_msg);       // TODO: save req context!
+                } else {
+                    printf("SRV: no active calculator!\r\n");
+                }
             }
-
-	}
-	
+            
+            if (b_i!=c->rx.data) {
+                buf_skip_first_byte(&c->rx, (b_i-c->rx.data));
+            }   
+        }
 
     }
 
@@ -146,3 +168,13 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 	return 0;
 }
 
+
+// TODO: send to save req context!
+void send_to_user(client_descr_t* c, char* result_msg)
+{
+    printf("send_to_user -> %s\r\n", result_msg);
+
+    uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+    uv_buf_t wrbuf = uv_buf_init(result_msg, strlen(result_msg));
+    uv_write(req, c->req_stream, &wrbuf, 1, on_write_complete);
+}

@@ -3,14 +3,16 @@
 
 #include <uv.h>
 
-typedef struct work_ctx_t {
-	uv_work_t handle;
-	
+
+// uv_work_t.data = 
+typedef struct task_ctx_t {
+	//uv_work_t handle;
 	uv_stream_t *req_client;
+
 	char* in_str;	// input JSON string
 	char* out_str;	// result JSON string
 	uint32_t dbg_id;
-} work_ctx_t;
+} task_ctx_t;
 
 
 

@@ -1,134 +1,196 @@
 
 
+#include "uv_server_proc.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "uv_proc.h"
-#include "calculate.h"
+#include "common.h"
 #include "json_tool.h"
-
-
+#include "uv_task.h"
+#include "mlist.h"
+#include "mbuf.h"
 
 static uv_tcp_t server;
 
-char* input_json_msg_handler(const char* json_str);
-//////////////////////////////////////////////////////////////////////////
-
-typedef struct receive_ctx_t {
-    size_t   buf_len;
-    char* buf;
-} receive_ctx_t;
-
-
-
-receive_ctx_t* init_client_ctx()
-{
-    receive_ctx_t* r_code = (receive_ctx_t*)calloc(1, sizeof(receive_ctx_t));
-    r_code->buf_len = 0;
-    r_code->buf = NULL;
-    return r_code;
-}
-
-
-void destroy_client_ctx(receive_ctx_t* c)
-{
-    if (c) {
-        c->buf_len = 0;
-        free(c->buf);
-        c->buf = NULL;
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) 
+// uv_tcp_t.data = 
+typedef struct socket_ctx_t {
+	//size_t   rx_buf_len;
+	//char*    rx_buf;
+	buf_t rx;
+
+	list_t task_list;    // run calculation work_queue list < uv_work_t* >
+} socket_ctx_t;
+
+
+socket_ctx_t* init_client_ctx()
 {
-    buf->base = (char*)malloc(suggested_size);
-    buf->len = suggested_size;
+	socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
+	buf_create(&r_code->rx);
+	//r_code->rx_buf_len = 0;
+	//r_code->rx_buf = NULL;
+	list_create(&r_code->task_list);
+	return r_code;
+}
+
+
+void destroy_client_ctx(socket_ctx_t* c)
+{
+	if (c) {
+       	//c->rx_buf_len = 0;
+		//free(c->rx_buf);
+		//c->rx_buf = NULL;
+		buf_destroy(&c->rx);
+		list_destroy(&c->task_list);
+		free(c);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+void on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) 
+{
+	buf->base = (char*)malloc(suggested_size);
+	buf->len = suggested_size;
 }
 
 
 void on_write_complete(uv_write_t *req, int status) 
 {
-    if (status) {
-        fprintf(stderr, "Write error %s\n", uv_strerror(status));
-    }
-    free(req);
+	if (status) {
+		fprintf(stderr, "Write error %s\n", uv_strerror(status));
+	}
+	free(req);
 }
 
 
 void on_close_complete(uv_handle_t *client)
 {
-    printf("on_close_complete\r\n");
-    destroy_client_ctx((receive_ctx_t*)client->data);
-    free(client);
+	printf("on_close_complete\r\n");
+	destroy_client_ctx((socket_ctx_t*)client->data);
+	free(client);
+}
+
+
+/*
+	return string from (*b_i)[0] to delimiter,
+	setup *b_i to next symbol
+ */
+char* get_msg_from_stream(char** b_i, char* msg_delimiter)
+{
+	char* r_code = NULL;
+	char* f_i = strstr(*b_i, msg_delimiter);
+
+	if (f_i) {
+		r_code = (char*)malloc(f_i-(*b_i)+1);
+		*f_i = 0;
+		memcpy(r_code, *b_i, (f_i-(*b_i)+1));
+		*b_i = f_i+1;
+	}
+
+	return r_code;
 }
 
 
 void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
-    if (nread < 0) {
-        if (nread != UV_EOF) {
-            fprintf(stderr, "Read error %s\n", uv_err_name(nread));
-            uv_close((uv_handle_t*) client, on_close_complete);
-        }
+	if (nread < 0) {
+		
+		if (nread != UV_EOF) {
+			fprintf(stderr, "Read error %s\n", uv_err_name(nread));
+			uv_close((uv_handle_t*) client, on_close_complete);
+		}
 
-    } else if (nread > 0) {
+	} else if (nread > 0) {
 
-        receive_ctx_t* c = (receive_ctx_t*)client->data;
+		socket_ctx_t* c = (socket_ctx_t*)client->data;
 
 		if (c) {
-			c->buf_len += nread;
-			c->buf = (char*)realloc(c->buf, c->buf_len+1);
-			memcpy(c->buf+c->buf_len-nread, buf->base, nread);
-            c->buf[c->buf_len] = 0;
 
-            printf("rcv: %s\r\n", c->buf);
+            //receive_client_str(c, c->buf, nread);
 
-            if (is_valid_json(c->buf)) {
+			buf_add(&c->rx, buf->base, nread);
+			//c->rx_buf_len += nread;
+			//c->rx_buf = (char*)realloc(c->rx_buf, c->rx_buf_len+1);
+			//memcpy(c->rx_buf+c->rx_buf_len-nread, buf->base, nread);
+			//c->rx_buf[c->rx_buf_len] = 0;
 
-                char* result_str = input_json_msg_handler(c->buf);
-                if (result_str) {
-                    uv_write_t *req = (uv_write_t *) malloc(sizeof(uv_write_t));
-                    uv_buf_t wrbuf = uv_buf_init(result_str, strlen(result_str));
-                    uv_write(req, client, &wrbuf, 1, on_write_complete);
-                    printf("snd: %s\r\n", result_str);
-                    free(result_str);
-                }
+			printf("rcv_buf[%ld]: [%s]\r\n", c->rx.data_sz, c->rx.data);
 
-            }
+			char* input_msg = NULL;
+			char* b_i = c->rx.data;
 
+			while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
+
+				printf("find msg -> [%s]\r\n", input_msg);
+
+				uv_work_t* work_hnd = (uv_work_t*)malloc(sizeof(*work_hnd));
+
+				if (work_hnd) {
+
+    				task_ctx_t* t_ctx = calloc(1, sizeof(*t_ctx));
+
+	    			if (t_ctx) {
+
+						static uint32_t dbg_id = 0;
+
+	    				t_ctx->dbg_id = dbg_id++;
+	    				t_ctx->req_client = client;
+	    				t_ctx->in_str = input_msg;
+
+	    					//list_add(&c->task_list, (void*)&w_ctx->handle, sizeof(uv_work_t*));
+						work_hnd->data = t_ctx;
+
+	    				if (uv_queue_work(uv_default_loop(), work_hnd, on_calc_work_cb, on_after_calc_work_cb) == 0) {
+	    					;
+	    				} else {
+	    					;
+	    				}
+	                        
+	    			} else {
+						free(input_msg);
+					}
+				}
+
+			}
+
+			if (b_i!=c->rx.data) {
+				buf_skip_first_byte(&c->rx, (b_i-c->rx.data));
+				printf("new rcv_buf[%ld]: [%s]\r\n", c->rx.data_sz, c->rx.data);
+			}			
+		
 		}
-	
+	}
 
-    }
-
-    if (buf->base) {
-        free(buf->base);
-    }
+	if (buf->base) {
+		free(buf->base);
+	}
 }
 
 
 void on_new_connection(uv_stream_t *server, int status) 
 {
-    if (status < 0) {
-        fprintf(stderr, "New connection error %s\n", uv_strerror(status));
-        return;
-    }
+	if (status < 0) {
+		fprintf(stderr, "New connection error %s\n", uv_strerror(status));
+		return;
+	}
                               
-    uv_tcp_t* client = malloc(sizeof(uv_tcp_t)); 
-    client->data = init_client_ctx();
+	uv_tcp_t* client = malloc(sizeof(uv_tcp_t)); 
+	client->data = init_client_ctx();
 
-    uv_tcp_init(uv_default_loop(), client);
+	uv_tcp_init(uv_default_loop(), client);
 
-    if (uv_accept(server, (uv_stream_t*)client) == 0) {
-    	uv_tcp_keepalive(client, 1, 50);
-        uv_read_start((uv_stream_t*)client, alloc_buffer, on_read_complete);
-    } else {
-        uv_close((uv_handle_t*)client, on_close_complete);
-    }
+	if (uv_accept(server, (uv_stream_t*)client) == 0) {
+		uv_tcp_keepalive(client, 1, 50);
+		uv_read_start((uv_stream_t*)client, on_alloc_buffer, on_read_complete);
+	} else {
+		uv_close((uv_handle_t*)client, on_close_complete);
+	}
 }
 
 
@@ -140,60 +202,33 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 	uv_ip4_addr("0.0.0.0", server_port, &addr);
 
 	uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
-	int r = uv_listen((uv_stream_t*)&server, 128, on_new_connection);
+	int r = uv_listen((uv_stream_t*)&server, MAX_CLIENT_COUNT, on_new_connection);
 	if (r) {
 		fprintf(stderr, "Listen error %s\n", uv_strerror(r));
 		return 1;
 	}
-	printf("server start [%u]\r\n", server_port);
+	printf("server start [:%u]\r\n", server_port);
 	return 0;
 }
 
 
-//////////////////////////////////////////////////////////////////////////
 
-char* input_json_msg_handler(const char* json_str)
+void send_data_to_client(uv_stream_t *client, uv_work_t* work_handle, char* data)
 {
-	char* r_code = NULL;
-
-	session_data_t sess = {0};
-
-	if (!parse_incoming_json(json_str, &sess)) {
-
-		int expression_idx;
-
-		stack_create(&sess.result, sizeof(NUM_t), stack_size(&sess.expression));
-
-		for (expression_idx = 0; expression_idx<stack_size(&sess.expression); ++expression_idx) {
-			char** expression_str = (char**)stack_element_at(&sess.expression, expression_idx);
-
-			NUM_t res;
-			char* err_str = NULL;
-			if (!calculate(*expression_str, &sess.var, &res, &err_str)) {
-				//printf("calc[%d]: \"%s\" -> %lld\r\n", expression_idx, *expression_str, res);
-				stack_push_back(&sess.result, &res);
-			} else {
-				printf("calc[%d]: ERROR \"%s\" -> %s\r\n", expression_idx, *expression_str, err_str);
-				break;
-			}
-		}
-		r_code = create_outgoing_json(&sess);
+	socket_ctx_t* c = client->data;
+	if (c) {
+		list_del(&c->task_list, work_handle, sizeof(uv_work_t*));
 	}
 
-	{// Release session
-		void** data_ptr = NULL;
-		var_destroy(&sess.var);
-		while (NULL!=(data_ptr=stack_pop_back(&sess.expression))) {
-			free(*data_ptr);
-		}
-		stack_destroy(&sess.expression);
-		stack_destroy(&sess.result);
-	}
+	if ( data && strlen(data) ) {
+		uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+		req->data = work_handle;
 
-	return r_code;
+		printf("\r\nsend_data_to_client():\"%s\"\r\n", data);
+
+		uv_buf_t wrbuf[2];
+		wrbuf[0] = uv_buf_init(data, strlen(data));
+		wrbuf[1] = uv_buf_init(MESSAGE_DELIMITER, strlen(MESSAGE_DELIMITER));
+		uv_write(req, client, wrbuf, 2, on_write_complete);
+	}
 }
-
-
-
-
-
