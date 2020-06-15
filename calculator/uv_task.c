@@ -9,6 +9,29 @@
 #include "uv_server_proc.h"
 
 
+task_ctx_t* init_task_ctx(const uint32_t id, uv_stream_t *client, char* in_str)
+{
+	task_ctx_t* r_code = (task_ctx_t*)malloc(sizeof(*r_code));
+
+	if (r_code) {
+		r_code->dbg_id = id;
+		r_code->req_client = client;
+	    r_code->in_str = in_str;
+	}
+	return r_code;
+}
+
+
+void destroy_task_ctx(task_ctx_t* ctx)
+{
+	if (ctx) {
+		free(ctx->in_str);
+		free(ctx->out_str);
+		free(ctx);
+	}
+}
+
+
 char* input_json_msg_handler(const char* json_str)
 {
 	char* r_code = NULL;
@@ -53,20 +76,6 @@ char* input_json_msg_handler(const char* json_str)
 }
 
 //////////////////////////////////////////////////////////////////////////
-/*
-void on_calc_work_close_cb(uv_handle_t *req)
-{
-	printf("#2");
-	work_ctx_t* w_ctx = (work_ctx_t*)req->data;
-	if (w_ctx) {
-		printf("[%u]+ calc_close_cb\r\n", w_ctx->dbg_id);
-
-		free(w_ctx->in_str);
-		free(w_ctx->out_str);
-		free(w_ctx);
-	}
-}
-*/
 
 void on_calc_work_cb(uv_work_t* req)
 {
@@ -89,16 +98,9 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 			send_data_to_client(w_ctx->req_client, req, w_ctx->out_str);
 		}
 
-		printf("#2");
-		if (w_ctx) {
-			printf("[%u]+ calc_close_cb\r\n", w_ctx->dbg_id);
-
-			free(w_ctx->in_str);
-			free(w_ctx->out_str);
-			free(w_ctx);
-		}
+		printf("[%u]+ calc_close_cb\r\n", w_ctx->dbg_id);
 	}
 
+	destroy_task_ctx(w_ctx);
 	free(req);
-	//uv_close((uv_handle_t*)req, on_calc_work_close_cb);
 }

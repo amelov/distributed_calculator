@@ -71,9 +71,14 @@ client_descr_t* select_calc_client()
 
     client_descr_t* r_code = NULL;
 
+    printf("calc : %d\r\n", get_calc_host_count());
+
     for (int i=0; i<get_calc_host_count(); i++) {
         client_descr_t* p = get_calc_host((base_calculator_id + i) % get_calc_host_count());
-        if (p->state == 0) {
+        
+        printf("calc[%d] %x %x-> %d\r\n", p->dbg_id, p, *p, p->state);
+
+        if (p->state == READY_STATE) {
             base_calculator_id++;
             base_calculator_id %= get_calc_host_count();
             r_code = p;
@@ -172,9 +177,11 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 // TODO: send to save req context!
 void send_to_user(client_descr_t* c, char* result_msg)
 {
-    printf("send_to_user -> %s\r\n", result_msg);
+    if (uv_is_active((uv_handle_t*)c->req_stream)) {
+        printf("send_to_user -> %s\r\n", result_msg);
 
-    uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
-    uv_buf_t wrbuf = uv_buf_init(result_msg, strlen(result_msg));
-    uv_write(req, c->req_stream, &wrbuf, 1, on_write_complete);
+        uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+        uv_buf_t wrbuf = uv_buf_init(result_msg, strlen(result_msg));
+        uv_write(req, c->req_stream, &wrbuf, 1, on_write_complete);
+    }
 }

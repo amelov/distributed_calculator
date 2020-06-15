@@ -5,7 +5,9 @@
 #include <uv.h>
 
 static mstack_t calc_host = {0};
+
 static uint16_t server_port = SERVER_PORT;
+
 
 uint8_t load_config(const char* fn)
 {
@@ -34,14 +36,17 @@ uint8_t load_config(const char* fn)
 					json_t *port_v = json_object_get(v, "port");
 
 					if ( ip_v  && port_v && json_is_string(ip_v) && json_is_number(port_v) ) {
-						client_descr_t a = {0};
-						a.dbg_id = idx;
-						a.addr.sin_family = AF_INET;
-						a.addr.sin_addr.s_addr = inet_addr( json_string_value(ip_v) );
-						a.addr.sin_port = htons( json_integer_value(port_v) );
-						a.state = UNDEF_STATE;
+						static uint32_t dbg_idx = 0;
+						client_descr_t* a = (client_descr_t*)malloc(sizeof(*a));
+						a->dbg_id = dbg_idx++;
+						a->addr.sin_family = AF_INET;
+						a->addr.sin_addr.s_addr = inet_addr( json_string_value(ip_v) );
+						a->addr.sin_port = htons( json_integer_value(port_v) );
+						a->state = UNDEF_STATE;
+						//a->connect.data = a;
+						//a->handle.data = a;
 						//buf_create(&a.rx);
-						stack_push_back(&calc_host, &a);
+						stack_push_back(&calc_host, a);
 					}
 				}
 			}
@@ -68,7 +73,7 @@ size_t get_calc_host_count()
 	return stack_size(&calc_host);
 }
 
-
+/*
 client_descr_t* find_client_by_stream(uv_stream_t* c)
 {
 	uint32_t idx = 0;
@@ -81,7 +86,7 @@ client_descr_t* find_client_by_stream(uv_stream_t* c)
 	}
 	return NULL;
 }
-
+*/
 
 uint16_t get_server_port()
 {

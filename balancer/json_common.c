@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+/*
 uint8_t is_valid_json(const char* s)
 {
 	size_t open_brace = 0;
@@ -20,7 +20,7 @@ uint8_t is_valid_json(const char* s)
 	}
 	return (open_brace) && (open_brace==close_brace);
 }
-
+*/
 
 /*
 	return string from (*b_i)[0] to delimiter,

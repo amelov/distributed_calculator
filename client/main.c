@@ -2,38 +2,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-
 
 #include <uv.h>
 
+#include "uv_readline_proc.h"
+#include "uv_balancer_client.h"
+#include "configuration.h"
+
 //////////////////////////////////////////////////////////////////////////
 
-int main()
+int main(int argc, char* argv[])
 {
-	char* input = NULL;
 
-	char shell_prompt[100] = "> ";
-	//snprintf(shell_prompt, sizeof(shell_prompt), "%s:%s $ ", getenv("USER"), getcwd(NULL, 1024));
+	client_descr_t balancer_client;
+	balancer_client.addr.sin_family = AF_INET;
+	balancer_client.addr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
+	balancer_client.addr.sin_port = htons( BALANCER_PORT );
+	balancer_client.state = UNDEF_STATE;
+	balancer_client.connect.data = &balancer_client;
+	balancer_client.handle.data = &balancer_client;
+	start_uv_tcp_client(&balancer_client);
 
-	while (1) {
-		input = readline(shell_prompt);
-        // eof
-        if (!input)
-            break;
-		// path autocompletion when tabulation hit
-        rl_bind_key('\t', rl_complete);
-        
-        // adding the previous input into history
-        add_history(input);
-
-        /* do stuff */
-
-        free(input);
+	uv_timer_t reconnect_timer;
+	uv_timer_init(uv_default_loop(), &reconnect_timer);
+	uv_timer_start(&reconnect_timer, on_reconnect_timer_cb, RECONNECT_TIMEOUT_ms, RECONNECT_TIMEOUT_ms);
+	
+	uv_work_t readline_hnd;
+	if (uv_queue_work(uv_default_loop(), &readline_hnd, on_readline_work_cb, on_after_readline_work_cb) == 0) {
+		;
 	}
-//	if (!start_uv_tcp_server(SERVER_PORT)) {
-//		return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-//	}
-	return 1;
+
+	return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

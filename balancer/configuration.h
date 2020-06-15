@@ -24,7 +24,7 @@
 
 #define SERVER_PORT 		6999
 #define MAX_CLIENT_COUNT	128
-#define RECONNECT_TIMEOUT_ms 65*1000
+#define RECONNECT_TIMEOUT_ms 30*1000
 
 #define MESSAGE_DELIMITER "\n"
 
@@ -40,6 +40,6 @@ uint16_t get_server_port();
 client_descr_t* get_calc_host(const size_t idx);
 size_t get_calc_host_count();
 
-client_descr_t* find_client_by_stream(uv_stream_t* c);
+//client_descr_t* find_client_by_stream(uv_stream_t* c);
 
 

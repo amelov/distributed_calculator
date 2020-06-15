@@ -11,6 +11,7 @@ C_FILES := $(wildcard *.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
 CFLAGS = -Wall -pedantic 
+#-fPIC
 LDFLAGS =
 LDLIBS = -lm -ljansson -luv -lreadline
 

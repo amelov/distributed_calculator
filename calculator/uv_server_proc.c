@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "json_common.h"
 #include "json_tool.h"
 #include "uv_task.h"
 #include "mlist.h"
@@ -20,11 +21,8 @@ static uv_tcp_t server;
 
 // uv_tcp_t.data = 
 typedef struct socket_ctx_t {
-	//size_t   rx_buf_len;
-	//char*    rx_buf;
 	buf_t rx;
-
-	list_t task_list;    // run calculation work_queue list < uv_work_t* >
+	//list_t task_list;    // run calculation work_queue list < uv_work_t* >
 } socket_ctx_t;
 
 
@@ -32,9 +30,7 @@ socket_ctx_t* init_client_ctx()
 {
 	socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
 	buf_create(&r_code->rx);
-	//r_code->rx_buf_len = 0;
-	//r_code->rx_buf = NULL;
-	list_create(&r_code->task_list);
+	//list_create(&r_code->task_list);
 	return r_code;
 }
 
@@ -42,11 +38,8 @@ socket_ctx_t* init_client_ctx()
 void destroy_client_ctx(socket_ctx_t* c)
 {
 	if (c) {
-       	//c->rx_buf_len = 0;
-		//free(c->rx_buf);
-		//c->rx_buf = NULL;
 		buf_destroy(&c->rx);
-		list_destroy(&c->task_list);
+		//list_destroy(&c->task_list);
 		free(c);
 	}
 }
@@ -77,26 +70,6 @@ void on_close_complete(uv_handle_t *client)
 }
 
 
-/*
-	return string from (*b_i)[0] to delimiter,
-	setup *b_i to next symbol
- */
-char* get_msg_from_stream(char** b_i, char* msg_delimiter)
-{
-	char* r_code = NULL;
-	char* f_i = strstr(*b_i, msg_delimiter);
-
-	if (f_i) {
-		r_code = (char*)malloc(f_i-(*b_i)+1);
-		*f_i = 0;
-		memcpy(r_code, *b_i, (f_i-(*b_i)+1));
-		*b_i = f_i+1;
-	}
-
-	return r_code;
-}
-
-
 void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
 	if (nread < 0) {
@@ -112,14 +85,7 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 
 		if (c) {
 
-            //receive_client_str(c, c->buf, nread);
-
 			buf_add(&c->rx, buf->base, nread);
-			//c->rx_buf_len += nread;
-			//c->rx_buf = (char*)realloc(c->rx_buf, c->rx_buf_len+1);
-			//memcpy(c->rx_buf+c->rx_buf_len-nread, buf->base, nread);
-			//c->rx_buf[c->rx_buf_len] = 0;
-
 			printf("rcv_buf[%ld]: [%s]\r\n", c->rx.data_sz, c->rx.data);
 
 			char* input_msg = NULL;
@@ -127,24 +93,18 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 
 			while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
 
-				printf("find msg -> [%s]\r\n", input_msg);
+				printf("\r\nfind msg -> [%s]\r\n", input_msg);
 
 				uv_work_t* work_hnd = (uv_work_t*)malloc(sizeof(*work_hnd));
-
 				if (work_hnd) {
 
     				task_ctx_t* t_ctx = calloc(1, sizeof(*t_ctx));
-
 	    			if (t_ctx) {
 
 						static uint32_t dbg_id = 0;
 
-	    				t_ctx->dbg_id = dbg_id++;
-	    				t_ctx->req_client = client;
-	    				t_ctx->in_str = input_msg;
-
-	    					//list_add(&c->task_list, (void*)&w_ctx->handle, sizeof(uv_work_t*));
-						work_hnd->data = t_ctx;
+    					//list_add(&c->task_list, (void*)&w_ctx->handle, sizeof(uv_work_t*));
+						work_hnd->data = init_task_ctx(dbg_id++, client, input_msg);
 
 	    				if (uv_queue_work(uv_default_loop(), work_hnd, on_calc_work_cb, on_after_calc_work_cb) == 0) {
 	    					;
@@ -215,15 +175,14 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 
 void send_data_to_client(uv_stream_t *client, uv_work_t* work_handle, char* data)
 {
-	socket_ctx_t* c = client->data;
-	if (c) {
-		list_del(&c->task_list, work_handle, sizeof(uv_work_t*));
-	}
+	//socket_ctx_t* c = client->data;
+	//if (c) {
+	//	list_del(&c->task_list, work_handle, sizeof(uv_work_t*));
+	//}
 
-	if ( data && strlen(data) ) {
+	if ( uv_is_active((uv_handle_t*)client) && data && strlen(data) ) {
 		uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
 		req->data = work_handle;
-
 		printf("\r\nsend_data_to_client():\"%s\"\r\n", data);
 
 		uv_buf_t wrbuf[2];

@@ -7,15 +7,13 @@
 #include "uv_server_proc.h"
 #include "json_common.h"
 
+
+
 void on_calc_close_complete(uv_handle_t *client)
 {
-	client_descr_t* c = find_client_by_stream((uv_stream_t*)client);
-	
- 	printf("cli:%d close_complete\n", c->dbg_id);
-	//destroy_client_ctx((receive_ctx_t*)client->data);
-	//free(client);
-	
+	client_descr_t* c = (client_descr_t*)client->data;//find_client_by_stream((uv_stream_t*)client);
 	if (c) {
+		printf("cli:%d close_complete\n", c->dbg_id);
 		c->state = UNDEF_STATE;
 		buf_destroy(&c->rx);
 	}
@@ -31,18 +29,12 @@ void on_calc_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *
 
 void on_calc_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
-	client_descr_t* c = find_client_by_stream((uv_stream_t*)client);	//TODO: client->data ???
+	client_descr_t* c = (client_descr_t*)client->data;
 
     if (nread < 0) {
 
-        if (nread != UV_EOF) {
-            fprintf(stderr, "cli:%d Read error %s\n", c->dbg_id, uv_err_name(nread));
-            uv_close((uv_handle_t*) client, on_calc_close_complete);
-            // state = UINT32_MAX;	
-        } else {
-        	printf("cli:%d read error\n", c->dbg_id);
-        	uv_close((uv_handle_t*) client, on_calc_close_complete);
-        }
+		fprintf(stderr, "cli:%d Read error %s\n", c->dbg_id, uv_err_name(nread));
+		uv_close((uv_handle_t*) client, on_calc_close_complete);
 
     } else if (nread > 0) {
 
@@ -63,7 +55,6 @@ void on_calc_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *b
 			printf("cli%d: new rcv: %s\r\n", c->dbg_id, c->rx.data);
 		}   
 
-
     }
 
    	if (buf->base) {
@@ -74,18 +65,16 @@ void on_calc_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *b
 
 void on_connect_to_calc(uv_connect_t* req, int status)
 {
-	client_descr_t* c = (client_descr_t*)req;
-
+	client_descr_t* c = (client_descr_t*)req->data;
 	if (status<0) {
-		//TODO: find client !!!!
 		c->state = UNDEF_STATE;
 		//buf_destroy(c->rx);
-        fprintf(stderr, "calc_cli:%d connection error: %s\n", c->dbg_id, uv_strerror(status));
+        fprintf(stderr, "calc_cli:%d connection error : %s\n", c->dbg_id, uv_strerror(status));
         return;
 	}
-
-	printf("calc_cli:%d connect\n", c->dbg_id);
+	
 	c->state = READY_STATE;
+	buf_create(&c->rx);
 
 	uv_tcp_keepalive((uv_tcp_t*)req->handle, 1, 50);
 	uv_read_start(req->handle, on_calc_alloc_buffer, on_calc_read_complete);
@@ -94,20 +83,16 @@ void on_connect_to_calc(uv_connect_t* req, int status)
 
 uint8_t start_uv_tcp_client(client_descr_t* c)
 {
-	printf("calc_cli:%d start: %s:%d\n", c->dbg_id, inet_ntoa(c->addr.sin_addr), htons(c->addr.sin_port));
+	printf("calc_cli_%d start: %s:%d\n", c->dbg_id, inet_ntoa(c->addr.sin_addr), htons(c->addr.sin_port));
 
 	uv_tcp_init(uv_default_loop(), &c->handle);
-
-
 	if (0==uv_tcp_connect(&c->connect, &c->handle, (const struct sockaddr*)&c->addr, on_connect_to_calc)) {
 		c->state = CONNECTING_STATE;
-		buf_create(&c->rx);
    		return 0;
 	}
 	c->state = UNDEF_STATE;
 	return 1;
 }
-
 
 
 void on_reconnect_timer_cb(uv_timer_t* handle)
@@ -131,10 +116,10 @@ void on_client_write_complete(uv_write_t *req, int status)
 }
 
 
-void send_to_calc(client_descr_t* c, uv_stream_t* req_stream, char* json_msg_str)
+void send_to_calc(client_descr_t* c, uv_stream_t* req_stream, char* json_msg_for_calc)
 {
 	c->req_stream = req_stream;
 	uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
-	uv_buf_t wrbuf = uv_buf_init(json_msg_str, strlen(json_msg_str));
+	uv_buf_t wrbuf = uv_buf_init(json_msg_for_calc, strlen(json_msg_for_calc));
 	uv_write(req, (uv_stream_t*)&c->handle, &wrbuf, 1, on_client_write_complete);
 }

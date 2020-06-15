@@ -15,6 +15,8 @@ typedef struct task_ctx_t {
 } task_ctx_t;
 
 
+task_ctx_t* init_task_ctx(const uint32_t id, uv_stream_t *client, char* in_str);
+
 
 void on_calc_work_cb(uv_work_t* req);
 

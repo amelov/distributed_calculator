@@ -8,7 +8,6 @@
 
 enum {
 	UNDEF_STATE = -1,
-
 	READY_STATE = 0,
 	CONNECTING_STATE = 1,
 };

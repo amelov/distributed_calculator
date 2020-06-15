@@ -14,9 +14,6 @@ typedef struct session_data_t {
 } session_data_t;
 
 
-
-uint8_t is_valid_json(const char* s);
-
 uint8_t parse_incoming_json(const char* in_msg, session_data_t* s);
 
 char* create_outgoing_json(session_data_t* s);
