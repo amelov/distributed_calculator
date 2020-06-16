@@ -2,7 +2,7 @@
 #include "uv_balancer_client.h"
 
 #include <stdlib.h>
-#include "json_common.h"
+#include "../tools/json_common.h"
 #include "configuration.h"
 
 

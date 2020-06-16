@@ -8,11 +8,12 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "json_common.h"
 #include "json_tool.h"
 #include "uv_task.h"
-#include "mlist.h"
-#include "mbuf.h"
+
+#include "../tools/json_common.h"
+#include "../tools/mlist.h"
+#include "../tools/mbuf.h"
 
 static uv_tcp_t server;
 

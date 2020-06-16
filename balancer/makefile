@@ -7,7 +7,8 @@ This makefile requires GNU Make.
 endif
 
 PROGRAM = balancer
-C_FILES := $(wildcard *.c)
+C_FILES := $(wildcard *.c) \
+           $(wildcard ../tools/*.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
 CFLAGS = -Wall -pedantic 

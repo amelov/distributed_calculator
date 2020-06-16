@@ -7,8 +7,11 @@ This makefile requires GNU Make.
 endif
 
 PROGRAM = calculator
-C_FILES := $(wildcard *.c)
+C_FILES := $(wildcard *.c) \
+           $(wildcard ../tools/*.c)
 OBJS := $(patsubst %.c, %.o, $(C_FILES))
+INCLUDE += -I../tools/
+
 CC = cc
 CFLAGS = -Wall -pedantic 
 #-DMAKE_TEST

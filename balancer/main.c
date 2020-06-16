@@ -8,7 +8,7 @@
 #include "uv_calc_client.h"
 //////////////////////////////////////////////////////////////////////////
 #include <string.h>
-#include "json_common.h"
+#include "../tools/json_common.h"
 
 int main(int argc, char* argv[])
 {

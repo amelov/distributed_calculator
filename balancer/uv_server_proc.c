@@ -7,10 +7,10 @@
 
 #include "configuration.h"
 
-
-#include "json_common.h"
 #include "uv_calc_client.h"
-#include "mbuf.h"
+
+#include "../tools/json_common.h"
+#include "../tools/mbuf.h"
 
 
 static uv_tcp_t server;
