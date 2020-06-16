@@ -17,7 +17,6 @@ int main(int argc, char* argv[])
 		size_t idx = 0;
 		client_descr_t* p = NULL;
 		while ( NULL != (p=get_calc_host(idx++)) ) {
-			printf("start_uv_tcp_client: %x\r\n", p);
 			p->connect.data = p;
 			p->handle.data = p;
 

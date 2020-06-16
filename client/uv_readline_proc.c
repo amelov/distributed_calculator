@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 
-//#define READLINE_LIBRARY
+#define READLINE_LIBRARY
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -54,11 +54,6 @@ Command_t commands[] = {
   {NULL, (function_ptr_t)NULL }
 };
 
-
-int is_whitespace(const char a)
-{
-	return (' ' == a);
-}
 
 
 char* stripwhite(char* in_str)
@@ -129,7 +124,7 @@ char *create_copy(char* s)
 }
 
 
-char* command_generator(int* text, int state)
+char* command_generator(const char* text, int state)
 {
 	static int list_index, len;
 	char *name;
@@ -155,7 +150,7 @@ char* command_generator(int* text, int state)
 }
 
 
-char** command_completion(char *text, int start, int end)
+static char** command_completion(const char *text, int start, int end)
 {
 	char **matches = (char **)NULL;
 
@@ -165,7 +160,7 @@ printf("#%s", text);
      to complete.  Otherwise it is the name of a file in the current
      directory. */
 	if (start == 0) {
-		matches = completion_matches(text, command_generator);
+		matches = rl_completion_matches(text, command_generator);
 	}
 	return (matches);
 }
@@ -183,7 +178,7 @@ void on_readline_work_cb(uv_work_t* req)
 	char* shell_prompt = "> ";
 
 	//snprintf(shell_prompt, sizeof(shell_prompt), "%s:%s $ ", getenv("USER"), getcwd(NULL, 1024));
-	rl_attempted_completion_function = (CPPFunction *)command_completion;
+	rl_attempted_completion_function = command_completion;
 
 	while (1) {
 		input = readline(shell_prompt);

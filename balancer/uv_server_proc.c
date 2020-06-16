@@ -71,13 +71,9 @@ client_descr_t* select_calc_client()
 
     client_descr_t* r_code = NULL;
 
-    printf("calc : %d\r\n", get_calc_host_count());
-
     for (int i=0; i<get_calc_host_count(); i++) {
         client_descr_t* p = get_calc_host((base_calculator_id + i) % get_calc_host_count());
         
-        printf("calc[%d] %x %x-> %d\r\n", p->dbg_id, p, *p, p->state);
-
         if (p->state == READY_STATE) {
             base_calculator_id++;
             base_calculator_id %= get_calc_host_count();
