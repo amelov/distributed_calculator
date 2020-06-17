@@ -6,31 +6,27 @@
 #include "../tools/mbuf.h"
 
 
-enum {
-	UNDEF_STATE = -1,
-	READY_STATE = 0,
-	CONNECTING_STATE = 1,
-};
+typedef void (*calc_proc_cb_t)(uv_stream_t* req_client, char* req_str, char* result_str);
+typedef void (*calc_error_cb_t)(uv_stream_t* req_client, char* req_str);
 
-
-typedef struct client_descr_t {
+typedef struct calc_client_descr_t {
 		uv_connect_t connect;
-		/*uv_stream_t*/uv_tcp_t handle;
+		uv_tcp_t handle;
 
         struct sockaddr_in addr;
-        uint32_t state;
 
         buf_t rx;
 
-        uv_stream_t* req_stream;	// last request client 
+        uv_stream_t* req_stream;	// requested client 
+        char* req_json;
+
+        calc_proc_cb_t on_result_fn;
+        calc_error_cb_t on_err_fn;
 
         uint32_t dbg_id;
-} client_descr_t;
+} calc_client_descr_t;
 
 
-uint8_t start_uv_tcp_client(client_descr_t* c);
 
-void on_reconnect_timer_cb(uv_timer_t* handle);
-
-
-void send_to_calc(client_descr_t* c, uv_stream_t* req_stream, char* json_msg_str);
+uint32_t send_req_to_calc(uv_stream_t* req_client, char* json_msg_str, struct sockaddr_in* calc_addr, 
+							calc_proc_cb_t fn, calc_error_cb_t err_fn);

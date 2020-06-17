@@ -14,18 +14,12 @@ int main(int argc, char* argv[])
 {
 	if (!load_config(BALANCER_CONFIG_FILE_NAME)) {
 
-		size_t idx = 0;
-		client_descr_t* p = NULL;
-		while ( NULL != (p=get_calc_host(idx++)) ) {
-			p->connect.data = p;
-			p->handle.data = p;
-
-			start_uv_tcp_client(p);
+		for (size_t i=0; i<get_calc_host_count(); ++i) {
+			calc_ctx_t a;
+			if (!get_calc_host_addr(i, &a)) {
+				printf("calc[%ld]: %s:%d\r\n", i, inet_ntoa(a.addr.sin_addr), ntohs(a.addr.sin_port));
+			}
 		}
-
-		uv_timer_t reconnect_timer;
-		uv_timer_init(uv_default_loop(), &reconnect_timer);
-		uv_timer_start(&reconnect_timer, on_reconnect_timer_cb, RECONNECT_TIMEOUT_ms, RECONNECT_TIMEOUT_ms);
 
 		uint16_t server_port = get_server_port();
 		if ( (argc>1) && atoi(argv[1]) ) {

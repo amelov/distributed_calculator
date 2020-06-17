@@ -19,6 +19,7 @@ static uv_tcp_t server;
 
 typedef struct socket_ctx_t {
     buf_t rx;
+    uint32_t error_count;
 } socket_ctx_t;
 
 
@@ -27,6 +28,7 @@ socket_ctx_t* init_client_ctx()
 {
     socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
     buf_create(&r_code->rx);
+    r_code->error_count = 0;
     return r_code;
 }
 
@@ -65,30 +67,64 @@ void on_close_complete(uv_handle_t *client)
 }
 
 
-client_descr_t* select_calc_client()
+uint32_t find_free_calc_client(calc_ctx_t* c)
 {
+    uint32_t r_code = 1;   
     static size_t base_calculator_id = 0;
 
-    client_descr_t* r_code = NULL;
-
     for (int i=0; i<get_calc_host_count(); i++) {
-        client_descr_t* p = get_calc_host((base_calculator_id + i) % get_calc_host_count());
-        
-        if (p->state == READY_STATE) {
-            base_calculator_id++;
-            base_calculator_id %= get_calc_host_count();
-            r_code = p;
+        if ( !get_calc_host_addr((base_calculator_id + i) % get_calc_host_count(), c) ) {
+            r_code = 0;
             break;
         }
     }
+    base_calculator_id++;
     return r_code;
+}
+
+
+static void on_calc_proc(uv_stream_t* req_client, char* req_str, char* result_str)
+{
+    if (uv_is_active((uv_handle_t*)req_client)) {
+
+        socket_ctx_t* c = (socket_ctx_t*)req_client->data;
+        if (c) {
+            c->error_count = 0;
+        }
+
+        printf("send_to_user -> %s\r\n", result_str);
+        uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+        uv_buf_t wrbuf = uv_buf_init(result_str, strlen(result_str));
+        uv_write(req, req_client, &wrbuf, 1, on_write_complete);
+    }
+    free(req_str);
+    free(result_str);
+}
+
+
+static void on_calc_error(uv_stream_t* req_client, char* req_str)
+{
+    socket_ctx_t* c = (socket_ctx_t*)req_client->data;
+
+    c->error_count++;
+    printf("SRV: on_calc_error (%s) err_count: %d\r\n", req_str, c->error_count);
+
+
+    calc_ctx_t c_addr;
+    if (!find_free_calc_client(&c_addr)) {
+        if (send_req_to_calc(req_client, req_str, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
+            printf("SRV: send_req_to_calc - error!\r\n");
+            free(req_str);
+        }
+    }
 }
 
 
 void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
     if (nread < 0) {
-        if (nread != UV_EOF) {
+        //if (nread != UV_EOF) 
+        {
             fprintf(stderr, "Read error %s\n", uv_err_name(nread));
             uv_close((uv_handle_t*) client, on_close_complete);
         }
@@ -109,13 +145,14 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 
                 printf("SRV: find msg -> [%s]\r\n", input_msg);
 
-                client_descr_t* p = select_calc_client();
-                if (p) {
-                    printf("SRV: active calculator: %d\r\n", p->dbg_id);
-                    send_to_calc(p, client, input_msg);       // TODO: save req context!
-                } else {
-                    printf("SRV: no active calculator!\r\n");
+                calc_ctx_t c_addr;
+                if (!find_free_calc_client(&c_addr)) {
+                    if (send_req_to_calc(client, input_msg, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
+                        printf("SRV: send_req_to_calc - error!\r\n");
+                        free(input_msg);
+                    }
                 }
+              
             }
             
             if (b_i!=c->rx.data) {
@@ -134,7 +171,7 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 void on_new_connection(uv_stream_t *server, int status) 
 {
     if (status < 0) {
-        fprintf(stderr, "New connection error %s\n", uv_strerror(status));
+        fprintf(stderr, "SRV: New connection error %s\n", uv_strerror(status));
         return;
     }
                               
@@ -167,17 +204,4 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 	}
 	printf("server start [%u]\r\n", server_port);
 	return 0;
-}
-
-
-// TODO: send to save req context!
-void send_to_user(client_descr_t* c, char* result_msg)
-{
-    if (uv_is_active((uv_handle_t*)c->req_stream)) {
-        printf("send_to_user -> %s\r\n", result_msg);
-
-        uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
-        uv_buf_t wrbuf = uv_buf_init(result_msg, strlen(result_msg));
-        uv_write(req, c->req_stream, &wrbuf, 1, on_write_complete);
-    }
 }

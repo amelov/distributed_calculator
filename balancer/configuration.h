@@ -13,6 +13,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/types.h>
+
 #include "../tools/mstack.h"
 #include <uv.h>
 
@@ -29,7 +31,16 @@
 #define MESSAGE_DELIMITER "\n"
 
 
+//enum ADDR_STATE_t {
+//	UNDEF_STATE = -1,
+//	READY_STATE = 0,
+//	CONNECTING_STATE = 1,
+//} ADDR_STATE_t;
 
+typedef struct calc_ctx_t {
+	struct sockaddr_in addr;
+	//enum ADDR_STATE_t state;
+} calc_ctx_t;
 
 
 uint8_t load_config(const char* fn);
@@ -37,8 +48,8 @@ uint8_t load_config(const char* fn);
 uint16_t get_server_port();
 
 
-client_descr_t* get_calc_host(const size_t idx);
-size_t get_calc_host_count();
+uint32_t get_calc_host_addr(const size_t idx, calc_ctx_t* addr);
+size_t  get_calc_host_count();
 
 //client_descr_t* find_client_by_stream(uv_stream_t* c);
 

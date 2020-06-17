@@ -3,8 +3,9 @@
 
 #include <jansson.h>
 #include <uv.h>
+#include <string.h>
 
-static mstack_t calc_host = {0};
+static mstack_t calc_addr_stack = {0};
 
 static uint16_t server_port = SERVER_PORT;
 
@@ -14,7 +15,7 @@ uint8_t load_config(const char* fn)
 	json_error_t error;
 	json_t* root = json_load_file(fn, 0, &error);
 
-	stack_create(&calc_host, sizeof(client_descr_t), 16);
+	stack_create(&calc_addr_stack, sizeof(calc_ctx_t), 16);
 
 	if (root) {
 
@@ -36,22 +37,17 @@ uint8_t load_config(const char* fn)
 					json_t *port_v = json_object_get(v, "port");
 
 					if ( ip_v  && port_v && json_is_string(ip_v) && json_is_number(port_v) ) {
-						static uint32_t dbg_idx = 0;
-						client_descr_t* a = (client_descr_t*)malloc(sizeof(*a));
-						a->dbg_id = dbg_idx++;
-						a->addr.sin_family = AF_INET;
-						a->addr.sin_addr.s_addr = inet_addr( json_string_value(ip_v) );
-						a->addr.sin_port = htons( json_integer_value(port_v) );
-						a->state = UNDEF_STATE;
-						//a->connect.data = a;
-						//a->handle.data = a;
-						//buf_create(&a.rx);
-						stack_push_back(&calc_host, a);
+						calc_ctx_t a = {0};
+						a.addr.sin_family = AF_INET;
+						a.addr.sin_addr.s_addr = inet_addr( json_string_value(ip_v) );
+						a.addr.sin_port = htons( json_integer_value(port_v) );
+						//a.state = UNDEF_STATE;
+						stack_push_back(&calc_addr_stack, &a);
 					}
 				}
 			}
 
-			return !(stack_size(&calc_host)>0);
+			return !(stack_size(&calc_addr_stack)>0);
 		}
 		json_decref(root);
 	}
@@ -60,33 +56,22 @@ uint8_t load_config(const char* fn)
 }
 
 
-client_descr_t* get_calc_host(const size_t idx)
+uint32_t get_calc_host_addr(const size_t idx, calc_ctx_t* c)
 {
-	if (idx < stack_size(&calc_host)) {
-		return (client_descr_t*)stack_element_at(&calc_host, idx);
+	if (c && (idx < stack_size(&calc_addr_stack))) {
+		//return (client_descr_t*)stack_element_at(&calc_host, idx);
+		memcpy(c, stack_element_at(&calc_addr_stack, idx), sizeof(*c));
+		return 0;
 	}
-	return NULL;
+	return 1;
 }
+
 
 size_t get_calc_host_count()
 {
-	return stack_size(&calc_host);
+	return stack_size(&calc_addr_stack);
 }
 
-/*
-client_descr_t* find_client_by_stream(uv_stream_t* c)
-{
-	uint32_t idx = 0;
-	client_descr_t* p = NULL;
-	while ( NULL != (p=get_calc_host(idx++)) ) {
-		if (p->connect.handle == c) {
-		//if (&p->handle == (uv_tcp_t*)c) {
-			return p;
-		}
-	}
-	return NULL;
-}
-*/
 
 uint16_t get_server_port()
 {
