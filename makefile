@@ -18,18 +18,10 @@ $(DIRS): $(BUILDDIRS)
 $(BUILDDIRS):
 	$(MAKE) -C $(@:build-%=%)
 
-install: $(DIRS)
+install: $(INSTALLDIRS)
+$(INSTALLDIRS):
 	mkdir -p ./bin
-#	echo $(DIRS) ./bin
-	for fn in $(DIRS) ; do \
-		$(cp $$fn/$$fn ./bin;) \
-	done
-#cp $$fn/$$fn bin ; \    
-#cp balancer/balancer.json bin
-#$(DIRS): $(BUILDDIRS)	
-#	cd $(DIRS)
-#	cp calculator/calculator bin
-#	cp client/client  bin
+	$(MAKE) -C $(@:install-%=%) install
 
 #$(INSTALLDIRS):
 #	$(MAKE) -C $(@:install-%=%) install
