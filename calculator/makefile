@@ -44,5 +44,9 @@ depend: .depend
 
 clean:
 	rm -f .depend $(OBJS)
+	rm -f ./../bin/$(PROGRAM)
+
+install:
+	install ./$(PROGRAM) ./../bin
 
 .PHONY: clean depend
