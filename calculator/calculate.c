@@ -49,7 +49,7 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 		if (temp_item->t == NUMBER_T) {
 			
 			char* s = get_string(temp_item);
-			a = atoi(s);	// TODO: ?
+			a = atoll(s);	// TODO: ?
 			stack_push_back(&stack, &a);
 			free(s);
 
