@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 
 #define READLINE_LIBRARY
 #include <readline/readline.h>
@@ -15,8 +15,9 @@
 #include "uv_balancer_client.h"
 
 
+static uv_poll_t stdin_poll;
 
-static void on_calc_result(uv_tcp_t* client, char* result_str);
+static void on_calc_result_cb(uv_tcp_t* client, char* result_str);
 
 
 enum {
@@ -136,7 +137,7 @@ int calculate_cmd(char* param)
 	if (stack_size(&input_exp_ctx)) {
 		char* out_json = create_req_json(&input_var_ctx, &input_exp_ctx);
 		if (out_json) {
-			send_to_calc(out_json, &on_calc_result);
+			send_to_calc(out_json, &on_calc_result_cb);
 		}
 		destroy_val_ctx(&input_var_ctx, &input_exp_ctx);
 		create_val_ctx(&input_var_ctx, &input_exp_ctx);
@@ -144,7 +145,6 @@ int calculate_cmd(char* param)
 	}
 	return NO_EXPRESSION_ERROR;
 }
-
 
 
 char* stripwhite(char* in_str)
@@ -171,15 +171,11 @@ char* command_generator(const char* text, int state)
 	static int list_index, len;
 	char *name;
 
-	/* If this is a new word to complete, initialize now.  This includes
-     saving the length of TEXT for efficiency, and initializing the index
-     variable to 0. */
 	if (!state) {
 		list_index = 0;
 		len = strlen(text);
 	}
 
-	/* Return the next name which partially matches from the command list. */
 	while (NULL != (name = commands[list_index].name)) {
 		list_index++;
 		if (strncmp (name, text, len) == 0) {
@@ -199,7 +195,6 @@ static char** command_completion(const char *text, int start, int end)
 	}
 	return (matches);
 }
-
 
 
 void make_operation(char* in_str)
@@ -266,47 +261,21 @@ void make_operation(char* in_str)
 
 }
 
-/*
-void on_readline_work_cb(uv_work_t* req)
-{
-
-	char* input = NULL;
-	char* shell_prompt = "> ";
-	rl_attempted_completion_function = command_completion;
-
-	create_val_ctx(&input_var_ctx, &input_exp_ctx);
-
-	while (1) {
-		input = readline(shell_prompt);
-		if (!input) {
-			break;
-		}
-		char* s = stripwhite(input);
-		if (s) {
-			add_history(s);
-			make_operation(s);
-		}
-		free(input);
-	}
-}
-*/
 ////////////////////////////////////////////////////////////////////
 
 
 static void on_user_enter_line(char *line)
 {
-    // Exit when user do a Ctrl-D.
     if (!line) {
         rl_callback_handler_remove();
-        printf("\n");
         exit(0);
     }
 
-    // Append line to history (except empty lines).
-    if (!*line) return;
-    add_history(line);
+    if (!*line) {
+    	return;
+    }
 
-    // Now run the given command.
+    add_history(line);
 	make_operation(line);
 }
 
@@ -316,13 +285,6 @@ static void on_receive_char(uv_poll_t *watcher, int status, int revents)
     rl_callback_read_char();
 }
 
-
-
-#include <unistd.h>
-#include <stdlib.h>
-
-
-static uv_poll_t stdin_poll;
 
 void start_readline()
 {
@@ -341,7 +303,7 @@ void start_readline()
 ////////////////////////////////////////////////////////////////////
 
 
-static void on_calc_result(uv_tcp_t* client, char* result_str)
+static void on_calc_result_cb(uv_tcp_t* client, char* result_str)
 {
 	//printf("RESULT: %s", result_str);
 	mstack_t var_ctx;
