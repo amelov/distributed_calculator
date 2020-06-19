@@ -13,20 +13,19 @@
 
 int main(int argc, char* argv[])
 {
-
-	client_descr_t balancer_client;
-	balancer_client.addr.sin_family = AF_INET;
-	balancer_client.addr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
-	balancer_client.addr.sin_port = htons( BALANCER_PORT );
-	balancer_client.state = UNDEF_STATE;
-	balancer_client.connect.data = &balancer_client;
-	balancer_client.handle.data = &balancer_client;
-	start_uv_tcp_client(&balancer_client);
-
-	uv_timer_t reconnect_timer;
-	uv_timer_init(uv_default_loop(), &reconnect_timer);
-	uv_timer_start(&reconnect_timer, on_reconnect_timer_cb, RECONNECT_TIMEOUT_ms, RECONNECT_TIMEOUT_ms);
+	set_balancer_addr(inet_addr("127.0.0.1"), BALANCER_DEFAULT_PORT);
+	switch (argc) {
+	case 2:
+		set_balancer_addr(inet_addr("127.0.0.1"), atoi(argv[1]));
+		break;
+	case 3:
+		set_balancer_addr(inet_addr(argv[1]), atoi(argv[2]));
+		break;
+	}
 	
+//	char* a = "{\"expressions\":[\"1+2+3+4+5\"]}\r\n";
+//	send_to_calc(a, NULL);
+
 	uv_work_t readline_hnd;
 	if (uv_queue_work(uv_default_loop(), &readline_hnd, on_readline_work_cb, on_after_readline_work_cb) == 0) {
 		;
