@@ -1,6 +1,7 @@
 
 #include "uv_readline_proc.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -113,7 +114,6 @@ int set_cmd(char* param)
 		VAL_t a;
 		a.name = str_create_copy(name_str);
 		a.value = atoll(value_str);
-		//printf("parse (%s) -> (\"%s\", %ld)\r\n", a.name, value_str, a.value);
 		stack_push_back(&input_var_ctx, &a);
 		return NO_ERROR;
 	}
@@ -127,7 +127,6 @@ int add_cmd(char* param)
 	a.name = str_create_copy(param);
 	a.value = 0;
 	stack_push_back(&input_exp_ctx, &a);
-	printf("expression: (%s)\r\n", a.name);
 	return NO_ERROR;
 }
 
@@ -137,14 +136,11 @@ int calculate_cmd(char* param)
 	if (stack_size(&input_exp_ctx)) {
 		char* out_json = create_req_json(&input_var_ctx, &input_exp_ctx);
 		if (out_json) {
-			printf("#calculate_cmd -> (%s)\r\n", out_json);
 			send_to_calc(out_json, &on_calc_result);
 		}
 		destroy_val_ctx(&input_var_ctx, &input_exp_ctx);
 		create_val_ctx(&input_var_ctx, &input_exp_ctx);
 		return NO_ERROR;
-	} else {
-		printf("no expressions!\r\n");
 	}
 	return NO_EXPRESSION_ERROR;
 }
@@ -270,7 +266,7 @@ void make_operation(char* in_str)
 
 }
 
-
+/*
 void on_readline_work_cb(uv_work_t* req)
 {
 
@@ -293,32 +289,78 @@ void on_readline_work_cb(uv_work_t* req)
 		free(input);
 	}
 }
+*/
+////////////////////////////////////////////////////////////////////
 
 
-void on_after_readline_work_cb(uv_work_t* req, int status)
+static void on_user_enter_line(char *line)
 {
-	;
+    // Exit when user do a Ctrl-D.
+    if (!line) {
+        rl_callback_handler_remove();
+        printf("\n");
+        exit(0);
+    }
+
+    // Append line to history (except empty lines).
+    if (!*line) return;
+    add_history(line);
+
+    // Now run the given command.
+	make_operation(line);
+}
+
+
+static void on_receive_char(uv_poll_t *watcher, int status, int revents)
+{
+    rl_callback_read_char();
 }
 
 
 
+#include <unistd.h>
+#include <stdlib.h>
+
+
+static uv_poll_t stdin_poll;
+
+void start_readline()
+{
+    printf("\n");
+    rl_callback_handler_install("> ", (rl_vcpfunc_t *)&on_user_enter_line);
+    
+    rl_attempted_completion_function = command_completion;
+
+    uv_poll_init(uv_default_loop(), &stdin_poll, STDIN_FILENO);
+    uv_poll_start(&stdin_poll, UV_READABLE, on_receive_char);
+
+    create_val_ctx(&input_var_ctx, &input_exp_ctx);
+}
+
+
+////////////////////////////////////////////////////////////////////
+
+
 static void on_calc_result(uv_tcp_t* client, char* result_str)
 {
-	printf("RESULT: %s", result_str);
-
+	//printf("RESULT: %s", result_str);
 	mstack_t var_ctx;
 	mstack_t exp_ctx;
 
 	create_val_ctx(&var_ctx, &exp_ctx);
 
 	if ( !parse_result_json(result_str, &var_ctx, &exp_ctx) ) {
+
+		printf("\r\n");
+
 		size_t i = 0;
 		VAL_t* v;
-		while ( NULL != (v=stack_element_at(&var_ctx, i))) {
+		while ( NULL != (v=stack_element_at(&var_ctx, i)) ) {
 			if (i)	{
 				printf("; ");
 			}
 			printf("%s = %ld", v->name, v->value);
+			i++;
 		}
 
 		if (i) {
@@ -326,14 +368,15 @@ static void on_calc_result(uv_tcp_t* client, char* result_str)
 		}
 
 		i = 0;
-		while ( NULL != (v=stack_element_at(&exp_ctx, i))) {
+		while ( NULL != (v=stack_element_at(&exp_ctx, i)) ) {
 			printf("%s\r\n", v->name);
+			i++;
 		}
+
 	} else {
 		printf("Error parse result JSON!\r\n");
 	}
 
 	destroy_val_ctx(&var_ctx, &exp_ctx);
-
 	close_calc_connection(client);
 }

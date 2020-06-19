@@ -33,5 +33,3 @@ uint32_t send_to_calc(char* out_json, on_calc_result_cb_t result_fn);
 
 void close_calc_connection();
 
-
-//void on_reconnect_timer_cb(uv_timer_t* handle);

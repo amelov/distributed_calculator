@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "../tools/json_common.h"
+#include "common.h"
 #include "configuration.h"
 
 
@@ -39,13 +40,13 @@ void on_client_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t 
     } else if (nread > 0) {
 
     	buf_add(&c->rx, buf->base, nread);
-   		printf("bcli: rcv: %s\r\n", c->rx.data);
+   		//printf("bcli: rcv: %s\r\n", c->rx.data);
 
 		char* input_msg = NULL;
 		char* b_i = c->rx.data;
 
 		while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
-			printf("bcli: find msg -> [%s]\r\n", input_msg);
+			//printf("bcli: find msg -> [%s]\r\n", input_msg);
 	        if (c->result_cb_fn) {
 	        	(*c->result_cb_fn)(&c->handle, input_msg);
     	    }
@@ -54,7 +55,6 @@ void on_client_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t 
             
 		if (b_i!=c->rx.data) {
 			buf_skip_first_byte(&c->rx, (b_i-c->rx.data));
-			printf("bcli: new rcv: %s\r\n", c->rx.data);
 		}   
 
     }
@@ -80,26 +80,26 @@ void on_connect_to_balancer(uv_connect_t* req, int status)
 	client_descr_t* c = (client_descr_t*)req->data;
 
 	if (status<0) {
+		c->err_count++;
 		c->state = UNDEF_STATE;
         fprintf(stderr, "bcli connection error: %s\n", uv_strerror(status));
         uv_close((uv_handle_t*)&c->handle, on_client_close_complete);
         return;
 	}
 
-	printf("bcli connect\n");
-
+	//printf("bcli connect\n");
 	c->state = READY_STATE;
-	
 
 	//uv_tcp_keepalive((uv_tcp_t*)req->handle, 1, 50);
 	uv_read_start(req->handle, on_client_alloc_buffer, on_client_read_complete);
 
 	{
-		printf("#send_calc_request\r\n");
 		uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
 		req->data = c;
-		uv_buf_t wrbuf = uv_buf_init(c->req_json, strlen(c->req_json));
-		uv_write(req, (uv_stream_t*)&c->handle, &wrbuf, 1, on_client_write_complete);
+		uv_buf_t wrbuf[2];
+		wrbuf[0] = uv_buf_init(c->req_json, strlen(c->req_json));
+		wrbuf[1] = uv_buf_init(MESSAGE_DELIMITER, strlen(MESSAGE_DELIMITER));
+		uv_write(req, (uv_stream_t*)&c->handle, wrbuf, 2, on_client_write_complete);
 	}
 }
 
@@ -116,12 +116,10 @@ uint32_t send_to_calc(char* out_json, on_calc_result_cb_t result_fn)
 	bc->req_json = out_json;
 	bc->result_cb_fn = result_fn;
 	buf_create(&bc->rx);
-
-	printf("bcli start: %s:%d\n", inet_ntoa(bc->addr.sin_addr), ntohs(bc->addr.sin_port));
+	//printf("bcli start: %s:%d\n", inet_ntoa(bc->addr.sin_addr), ntohs(bc->addr.sin_port));
 
 	uv_tcp_init(uv_default_loop(), &bc->handle);
 	if (0==uv_tcp_connect(&bc->connect, &bc->handle, (const struct sockaddr*)&bc->addr, on_connect_to_balancer)) {
-		printf("connecting...\r\n");
 		bc->state = CONNECTING_STATE;
    		return 0;
 	}

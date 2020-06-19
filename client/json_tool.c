@@ -9,7 +9,7 @@ char* create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx)
 {
 	char* r_code = NULL;
 
-	json_t *root = json_object();
+	json_t* root = json_object();
 
 	if ( root && stack_size(expressions_ctx) ) {
 
@@ -54,14 +54,14 @@ uint32_t parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx)
 
 	if (root) {
 
-		json_t *expressions = json_object_get(root, "expressions");
-		if (expressions && json_is_array(expressions)) {
+		json_t* results = json_object_get(root, "results");
+		if (results && json_is_array(results)) {
 
 			//char* p_str = NULL;
 			size_t idx;
 			json_t* v;
 
-			json_array_foreach(expressions, idx, v) {
+			json_array_foreach(results, idx, v) {
 				if (v && json_is_string(v)) {
 					VAL_t rv;
 					const char*j_str = json_string_value(v);
@@ -77,13 +77,13 @@ uint32_t parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx)
 				}
 			}
 		} else {
-			printf("no \"expressions\" object!\r\n");
+			printf("no \"results\" object!\r\n");
 		}
 
 
 		if (!r_code) {
 
-			json_t *params = json_object_get(root, "params");
+			json_t* params = json_object_get(root, "params");
 			if (params && json_is_object(params)) {
 
 				const char *key = NULL;
@@ -110,40 +110,3 @@ uint32_t parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx)
 	}
 	return r_code;
 }
-
-
-/*
-
-	mstack_t var_ctx;
-	mstack_t exp_ctx;
-	VAR_t v;
-	VAR_t* p_v;
-
-	stack_create(&var_ctx, sizeof(v), 16);
-	v.name = (char*)malloc(10);
-	strcpy(v.name, "a");
-	v.value = 1;
-	stack_push_back(&var_ctx, &v);
-
-	stack_create(&exp_ctx, sizeof(v), 16);
-	v.name = (char*)malloc(10);
-	strcpy(v.name, "a+a");
-	stack_push_back(&exp_ctx, &v);
-
-	r_code = create_req_json(&var_ctx, &exp_ctx);
-	printf("\"%s\"", r_code);
-
-	free(r_code);
-
-
-	while ( NULL != (p_v = stack_pop_back((&var_ctx))) ) {
-		free(p_v->name);
-	}
-	stack_destroy(&var_ctx);
-
-	while ( NULL != (p_v = stack_pop_back((&exp_ctx))) ) {
-		free(p_v->name);
-	}
-	stack_destroy(&exp_ctx);
-
-        */
