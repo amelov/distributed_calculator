@@ -20,16 +20,20 @@ static uv_tcp_t server;
 typedef struct socket_ctx_t {
     buf_t rx;
     uint32_t error_count;
+    uint32_t id;
 } socket_ctx_t;
 
 
 
 socket_ctx_t* init_client_ctx()
 {
-    socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
-    buf_create(&r_code->rx);
-    r_code->error_count = 0;
-    return r_code;
+    static uint32_t _user_client_id = 0;
+
+    socket_ctx_t* s_c = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
+    buf_create(&s_c->rx);
+    s_c->error_count = 0;
+    s_c->id = _user_client_id++;
+    return s_c;
 }
 
 
@@ -61,7 +65,8 @@ void on_write_complete(uv_write_t *req, int status)
 
 void on_close_complete(uv_handle_t *client)
 {
-    printf("on_close_complete\r\n");
+    socket_ctx_t* s_c = client->data;
+    printf("SRV[%d]: on_close_complete\r\n", s_c->id);
     destroy_client_ctx((socket_ctx_t*)client->data);
     free(client);
 }
@@ -92,7 +97,7 @@ static void on_calc_proc(uv_stream_t* req_client, char* req_str, char* result_st
             c->error_count = 0;
         }
 
-        printf("send_to_user -> %s\r\n", result_str);
+        printf("SRV[%d]: send_to_user -> %s\r\n", c->id, result_str);
         uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
         uv_buf_t wrbuf = uv_buf_init(result_str, strlen(result_str));
         uv_write(req, req_client, &wrbuf, 1, on_write_complete);
@@ -107,13 +112,13 @@ static void on_calc_error(uv_stream_t* req_client, char* req_str)
     socket_ctx_t* c = (socket_ctx_t*)req_client->data;
 
     c->error_count++;
-    printf("SRV: on_calc_error (%s) err_count: %d\r\n", req_str, c->error_count);
+    printf("SRV[%d]: on_calc_error (%s) err_count: %d\r\n", c->id, req_str, c->error_count);
 
 
     calc_ctx_t c_addr;
     if (!find_free_calc_client(&c_addr)) {
         if (send_req_to_calc(req_client, req_str, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
-            printf("SRV: send_req_to_calc - error!\r\n");
+            printf("SRV[%d]: send_req_to_calc - error!\r\n", c->id);
             free(req_str);
         }
     }
@@ -122,33 +127,35 @@ static void on_calc_error(uv_stream_t* req_client, char* req_str)
 
 void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
+    socket_ctx_t* c = (socket_ctx_t*)client->data;
+
     if (nread < 0) {
         //if (nread != UV_EOF) 
         {
-            fprintf(stderr, "Read error %s\n", uv_err_name(nread));
+            fprintf(stderr, "SRV[%d]: Read error %s\n", c->id, uv_err_name(nread));
             uv_close((uv_handle_t*) client, on_close_complete);
         }
 
     } else if (nread > 0) {
 
-        socket_ctx_t* c = (socket_ctx_t*)client->data;
+        
 
     	if (c) {
 
             buf_add(&c->rx, buf->base, nread);
-    		printf("SRV: r: %s\r\n", c->rx.data);
+    		printf("SRV[%d]: r: %s\r\n", c->id, c->rx.data);
 
             char* input_msg = NULL;
             char* b_i = c->rx.data;
 
             while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
 
-                printf("SRV: find msg -> [%s]\r\n", input_msg);
+                printf("SRV[%d]: find msg -> [%s]\r\n", c->id, input_msg);
 
                 calc_ctx_t c_addr;
                 if (!find_free_calc_client(&c_addr)) {
                     if (send_req_to_calc(client, input_msg, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
-                        printf("SRV: send_req_to_calc - error!\r\n");
+                        printf("SRV[%d]: send_req_to_calc - error!\r\n", c->id);
                         free(input_msg);
                     }
                 }

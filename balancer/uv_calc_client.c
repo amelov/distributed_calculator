@@ -46,7 +46,7 @@ void on_calc_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *b
 
 		while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
 
-			printf("calc[%d]: find msg -> [%s]\r\n", c->dbg_id, input_msg);
+			printf("calc[%d]: result -> [%s]\r\n", c->dbg_id, input_msg);
 			//send_to_user(c->req_stream, input_msg);
 			if (c->on_result_fn) {
 				(*c->on_result_fn)(c->req_stream, c->req_json, input_msg);

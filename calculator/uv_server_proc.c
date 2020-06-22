@@ -23,14 +23,18 @@ static uv_tcp_t server;
 // uv_tcp_t.data = 
 typedef struct socket_ctx_t {
 	buf_t rx;
+	uint32_t id;
 } socket_ctx_t;
 
 
 socket_ctx_t* init_client_ctx()
 {
-	socket_ctx_t* r_code = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
-	buf_create(&r_code->rx);
-	return r_code;
+	static uint32_t _client_id = 0;
+
+	socket_ctx_t* c_ctx = (socket_ctx_t*)calloc(1, sizeof(socket_ctx_t));
+	buf_create(&c_ctx->rx);
+	c_ctx->id = _client_id++;
+	return c_ctx;
 }
 
 
@@ -53,7 +57,9 @@ void on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 
 void on_close_complete(uv_handle_t *client)
 {
-	printf("on_close_complete\r\n");
+	socket_ctx_t* c = (socket_ctx_t*)client->data;
+	printf("cli[%d]:  on_close_complete\r\n", c->id);
+	
 	destroy_client_ctx((socket_ctx_t*)client->data);
 	free(client);
 }
@@ -77,16 +83,16 @@ void on_write_complete(uv_write_t *req, int status)
 
 void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
+	socket_ctx_t* c = (socket_ctx_t*)client->data;
+
 	if (nread < 0) {
 		
 		if (nread != UV_EOF) {
-			fprintf(stderr, "Read error %s\n", uv_err_name(nread));
+			fprintf(stderr, "cli[%d]: Read error %s\n", c->id, uv_err_name(nread));
 			uv_close((uv_handle_t*) client, on_close_complete);
 		}
 
 	} else if (nread > 0) {
-
-		socket_ctx_t* c = (socket_ctx_t*)client->data;
 
 		if (c) {
 
@@ -98,7 +104,7 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 
 			while ( NULL != (input_msg = get_msg_from_stream(&b_i, MESSAGE_DELIMITER)) ) {
 
-				printf("\r\nfind msg -> [%s]\r\n", input_msg);
+				printf("\r\ncli[%d]: find msg -> [%s]\r\n", c->id, input_msg);
 
 				input_json_msg_handler(client, input_msg);
 				free(input_msg);
@@ -163,7 +169,10 @@ void send_data_to_client(uv_stream_t *client, char* data)
 	if ( uv_is_active((uv_handle_t*)client) && data && strlen(data) ) {
 		uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
 		req->data = client;
-		printf("\r\nsend_data_to_client():\"%s\"\r\n", data);
+
+		socket_ctx_t* s_ctx = client->data;
+
+		printf("\r\ncli[%d]: result: \"%s\"\r\n", s_ctx->id, data);
 
 		uv_buf_t wrbuf[2];
 		wrbuf[0] = uv_buf_init(data, strlen(data));
