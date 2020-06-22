@@ -91,7 +91,6 @@ char* create_outgoing_json(var_store_t* var, session_data_t* sess)
 	json_t *root = json_object();
 
 	if (root) {	
-
 		size_t i = 0;
 
 		if (var && var_size(var)) {
@@ -116,7 +115,8 @@ char* create_outgoing_json(var_store_t* var, session_data_t* sess)
 				char* exp_str = *((char**)stack_element_at(&sess->expression, i));
 				NUM_t* res = (NUM_t*)stack_element_at(&sess->result, i);
 
-				if ( *err_str ) {
+				if ( err_str ) {
+
 					json_array_append(json_results, json_string(err_str));
 				} else if (exp_str && res) {
 					char* temp_buf = (char*)malloc( strlen(exp_str) + 3 + MAX_NUM_T_TO_STR_LEN + 1);

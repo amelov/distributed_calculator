@@ -37,7 +37,6 @@ void on_calc_work_cb(uv_work_t* req)
 		}
 
 	}
-
 }
 
 
@@ -61,7 +60,6 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 			}
 			p_task = list_next(p_task);
 		}
-
 		if ( ready_thread_count == list_size(t_ctx->owner) ) {
 
 			session_data_t sess;
@@ -80,11 +78,10 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 
 				p_task = list_next(p_task);
 			}
-
 			char *result_json = create_outgoing_json(&t_ctx->var, &sess);
 			//printf("all task complete => %s!\r\n", result_json);
-			send_data_to_client(t_ctx->client, result_json);
 
+			send_data_to_client(t_ctx->client, result_json);
 			free(result_json);
 			stack_destroy(&sess.result);
 			stack_destroy(&sess.expression);
@@ -101,12 +98,9 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 		}
 
 	}
+
+	free(req);
 }
-
-
-
-
-
 
 
 
@@ -134,6 +128,7 @@ uint32_t input_json_msg_handler(uv_stream_t *client, const char* json_str)
 			ctc->owner = calc_task_ctx;
 			ctc->client = client;
 			ctc->expression_str = str_create_copy(*expression_str);
+			ctc->error_str = NULL;
 
 			var_init(&ctc->var, var_size(&variable));
 			for (int i=0; i<var_size(&variable); ++i) {
@@ -148,24 +143,22 @@ uint32_t input_json_msg_handler(uv_stream_t *client, const char* json_str)
 			list_add(calc_task_ctx, ctc, sizeof(*ctc));
 		}
 
-
 		list_t* p_list = list_head(calc_task_ctx);
 		while (p_list) {
 			uv_work_t* work_hnd = (uv_work_t*)malloc(sizeof(*work_hnd));
-
 			if (work_hnd) {
 				work_hnd->data = list_data(p_list);
+
 				if (uv_queue_work(uv_default_loop(), work_hnd, on_calc_work_cb, on_after_calc_work_cb) == 0) {
 					;
 				} else {
 					;
 				}
-
+				
 			}
 
 			p_list = list_next(p_list);
 		}
-
 
 		{
 			void** data_ptr = NULL;
