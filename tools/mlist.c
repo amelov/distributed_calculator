@@ -73,6 +73,15 @@ list_t* list_next(list_t* p_list)
 }
 
 
+void* list_data(list_t* p_list)
+{
+	if (p_list) {
+		return p_list->data;
+	}
+	return NULL;
+}
+
+
 size_t list_size(list_t* p_list)
 {
 	if (p_list) {

@@ -22,6 +22,7 @@ void list_del(list_t* p_list, void* data, const size_t data_len);
 
 list_t* list_head(list_t* p_list);
 list_t* list_next(list_t* p_list);
+void* list_data(list_t* p_list);
 
 size_t list_size(list_t* p_list);
 

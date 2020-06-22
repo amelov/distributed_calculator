@@ -51,6 +51,9 @@ void on_calc_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *b
 			if (c->on_result_fn) {
 				(*c->on_result_fn)(c->req_stream, c->req_json, input_msg);
 			}
+
+			uv_close((uv_handle_t*) client, on_calc_close_complete);
+			break;
 		}
             
 		if (b_i!=c->rx.data) {

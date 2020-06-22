@@ -8,12 +8,14 @@
 
 
 typedef struct session_data_t {
-	var_store_t var;
 	mstack_t expression;
 	mstack_t result;
+	mstack_t error;
 } session_data_t;
 
 
-uint8_t parse_incoming_json(const char* in_msg, session_data_t* s);
+char *str_create_copy(const char* s);
 
-char* create_outgoing_json(session_data_t* s);
+uint8_t parse_incoming_json(const char* in_msg, mstack_t* expression, var_store_t* variable);
+
+char* create_outgoing_json(var_store_t* var, session_data_t* s);

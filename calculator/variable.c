@@ -75,7 +75,7 @@ size_t var_size(var_store_t* vs)
 }
 
 
-uint8_t var_element_at(var_store_t* vs, const size_t idx, char**key, NUM_t** n)
+uint8_t var_element_at(var_store_t* vs, const size_t idx, char** key, NUM_t** n)
 {
 	var_t* v = stack_element_at(vs, idx);
 
