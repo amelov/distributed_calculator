@@ -2,8 +2,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
-void set_balancer_addr(const uint32_t ip, const uint16_t port);
 
-struct sockaddr_in* get_balancer_addr();
+void cfg_create(const uint32_t ip, const uint16_t port);
+
+struct sockaddr_in* cfg_balancer_addr();

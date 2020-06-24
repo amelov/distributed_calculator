@@ -27,5 +27,6 @@ void*    mstack_top(mstack_t* s);
 
 void*    stack_element_at(mstack_t* s, const uint32_t idx);
 
+void*    stack_raw_data(mstack_t* s);
 
 void stack_destroy(mstack_t* s);

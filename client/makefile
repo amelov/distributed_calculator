@@ -13,7 +13,7 @@ OBJS := $(patsubst %.c, %.o, $(C_FILES))
 CC = cc
 CFLAGS = -Wall -pedantic
 LDFLAGS =
-LDLIBS = -lm -ljansson -luv -lreadline
+LDLIBS = -lm -ljansson
 
 all: $(PROGRAM)
 

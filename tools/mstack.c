@@ -80,6 +80,10 @@ void* stack_element_at(mstack_t* s, const uint32_t idx)
 	return NULL;
 }
 
+void* stack_raw_data(mstack_t* s)
+{
+	return s->_data_ptr;
+}
 
 void stack_destroy(mstack_t* s)
 {
