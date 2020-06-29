@@ -30,10 +30,10 @@ int main(int argc, char* argv[])
 	uint16_t balancer_port = BALANCER_DEFAULT_PORT;
 
 	static struct option long_options[] = {
-		{"help", 	no_argument,       NULL,	'h'},
-		{"port",    required_argument, NULL,	'p'},
-		{" ",    	required_argument, NULL,	' '},
-		{0,         no_argument,       NULL,	0}
+		{"help",	no_argument,		NULL,	'h'},
+		{"port",	required_argument,	NULL,	'p'},
+		{" ",		required_argument,	NULL,	' '},
+		{0,			no_argument,		NULL,	0}
 	};
 
 	int option_index = -1;

@@ -24,8 +24,8 @@ enum {
 };
 
 
-mstack_t input_var_ctx;
-mstack_t input_exp_ctx;
+static mstack_t input_var_ctx;
+static mstack_t input_exp_ctx;
 
 
 typedef int (*command_function_ptr_t)(char*);
@@ -36,27 +36,27 @@ typedef struct Command_t {
 	command_function_ptr_t func;		/* Function to call to do the job. */
 } Command_t;
 
-static int set_cmd(char*);
-static int add_cmd(char*);
-static int calculate_cmd(char*);
+static int dc_client_console_set_cmd(char*);
+static int dc_client_console_add_cmd(char*);
+static int dc_client_console_calculate_cmd(char*);
 
 Command_t commands[] = {
-  {"set", set_cmd},
-  {"add", add_cmd},
-  {"calculate", calculate_cmd},
-  {NULL, (command_function_ptr_t)NULL }
+	{"set", dc_client_console_set_cmd},
+	{"add", dc_client_console_add_cmd},
+	{"calculate", dc_client_console_calculate_cmd},
+	{NULL, (command_function_ptr_t)NULL}
 };
 
 
 
-static void create_console_ctx(mstack_t* p1, mstack_t* p2)
+static void dc_client_console_ctx_create(mstack_t* p1, mstack_t* p2)
 {
 	stack_create(p1, sizeof(dc_VAL_t), 16);
 	stack_create(p2, sizeof(dc_VAL_t), 16);
 }
 
 
-static void destroy_console_ctx(mstack_t* p1, mstack_t* p2)
+static void dc_client_console_ctx_destroy(mstack_t* p1, mstack_t* p2)
 {
 	for (int id=0; id<2; id++) {
 		mstack_t* p = id? p2 : p1;
@@ -69,14 +69,14 @@ static void destroy_console_ctx(mstack_t* p1, mstack_t* p2)
 }
 
 
-static void dc_client_receive_calc_result_cb(char* result_str)
+static void dc_client_net_rx_calc_result_cb(char* result_str)
 {
 	mstack_t var_ctx;
 	mstack_t exp_ctx;
 
-	create_console_ctx(&var_ctx, &exp_ctx);
+	dc_client_console_ctx_create(&var_ctx, &exp_ctx);
 
-	if ( !dc_client_parse_result_json(result_str, &var_ctx, &exp_ctx) ) {
+	if ( !dc_client_json_result_parse(result_str, &var_ctx, &exp_ctx) ) {
 
 		printf("\r\n");
 
@@ -104,12 +104,12 @@ static void dc_client_receive_calc_result_cb(char* result_str)
 		printf("Error parse result JSON!\r\n");
 	}
 
-	destroy_console_ctx(&var_ctx, &exp_ctx);
+	dc_client_console_ctx_destroy(&var_ctx, &exp_ctx);
 }
 
 
-// parse string: "aaa = xxxx  
-static int set_cmd(char* param)
+// parse string: "aaa = xxxx
+static int dc_client_console_set_cmd(char* param)
 {	
 	char* name_str = "";
 	char* value_str = "";
@@ -160,7 +160,7 @@ static int set_cmd(char* param)
 }
 
 
-static int add_cmd(char* param)
+static int dc_client_console_add_cmd(char* param)
 {
 	dc_VAL_t a;
 	a.name = str_create_copy(param);
@@ -170,22 +170,22 @@ static int add_cmd(char* param)
 }
 
 
-static int calculate_cmd(char* param)
+static int dc_client_console_calculate_cmd(char* param)
 {
 	if (stack_size(&input_exp_ctx)) {
-		char* out_json = dc_client_create_req_json(&input_var_ctx, &input_exp_ctx);
+		char* out_json = dc_client_json_create(&input_var_ctx, &input_exp_ctx);
 		if (out_json) {
-			dc_client_send_calculation_job(out_json, &dc_client_receive_calc_result_cb);
+			dc_client_net_send_calculation_job(out_json, &dc_client_net_rx_calc_result_cb);
 		}
-		destroy_console_ctx(&input_var_ctx, &input_exp_ctx);
-		create_console_ctx(&input_var_ctx, &input_exp_ctx);
+		dc_client_console_ctx_destroy(&input_var_ctx, &input_exp_ctx);
+		dc_client_console_ctx_create(&input_var_ctx, &input_exp_ctx);
 		return NO_ERROR;
 	}
 	return NO_EXPRESSION_ERROR;
 }
 
 
-static char* command_generator(const char* text, int state)
+static char* dc_client_console_command_generator(const char* text, int state)
 {
 	static int list_index, len;
 	char *name;
@@ -200,23 +200,23 @@ static char* command_generator(const char* text, int state)
 		if (strncmp (name, text, len) == 0) {
 			return str_create_copy(name);
 		}
-    }
+	}
 
 	return (char *)NULL;
 }
 
 
-static char** command_completion(const char *text, int start, int end)
+static char** dc_client_console_command_completion(const char *text, int start, int end)
 {
 	char **matches = (char **)NULL;
 	if (start == 0) {
-		matches = rl_completion_matches(text, command_generator);
+		matches = rl_completion_matches(text, dc_client_console_command_generator);
 	}
 	return (matches);
 }
 
 
-static void make_operation(char* in_str)
+static void dc_client_console_make_operation(char* in_str)
 {
 	if (strstr(in_str, ";")) {
 		char *cmd_str = NULL;
@@ -257,7 +257,7 @@ static void make_operation(char* in_str)
 
 				if (commands[cmd_idx].func) {
 					switch ((*(commands[cmd_idx].func))(param)) {
-					case NO_ERROR:	
+					case NO_ERROR:
 						break;
 					case PARSE_ERROR:
 						printf("command parse error!\r\n");
@@ -267,7 +267,7 @@ static void make_operation(char* in_str)
 						break;
 					case INVALID_NUM_ERROR:
 						printf("invalid num!\r\n");
-						break;						
+						break;
 					}
 				}
 				break;
@@ -287,25 +287,24 @@ static void make_operation(char* in_str)
 
 int dc_client_start_readline()
 {
-    printf("\n");
-    
-    rl_attempted_completion_function = command_completion;
-    rl_bind_key('\t', rl_complete);
+	printf("\n");
+	
+	rl_attempted_completion_function = dc_client_console_command_completion;
+	rl_bind_key('\t', rl_complete);
 
-    create_console_ctx(&input_var_ctx, &input_exp_ctx);
+	dc_client_console_ctx_create(&input_var_ctx, &input_exp_ctx);
 
-    while (1) {
-        char* input = readline("> ");
-	    if (!*input) {
-	    	return 0;
-	    }
+	while (1) {
+		char* input = readline("> ");
+		if (!*input) {
+			return 0;
+		}
 
-	    add_history(input);
-		make_operation(input);
+		add_history(input);
+		dc_client_console_make_operation(input);
 		free(input);
-    }
+	}
 
-    destroy_console_ctx(&input_var_ctx, &input_exp_ctx);
-    return 0;
+	dc_client_console_ctx_destroy(&input_var_ctx, &input_exp_ctx);
+	return 0;
 }
-

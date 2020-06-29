@@ -6,7 +6,7 @@
 #include <assert.h>
 
 
-char* dc_client_create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx)
+char* dc_client_json_create(mstack_t* var_ctx, mstack_t* expressions_ctx)
 {
 	char* r_code = NULL;
 
@@ -21,7 +21,6 @@ char* dc_client_create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx)
 			for (i=0; i<stack_size(var_ctx); ++i) {
 				dc_VAL_t* n;
 				if (NULL !=(n = stack_element_at(var_ctx, i))) {
-					//printf("%s = %d\r\n", key, *n);
 					json_object_set_new(params_obj, n->name, json_integer(n->value));
 				}
 			}
@@ -46,7 +45,7 @@ char* dc_client_create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx)
 }
 
 
-uint32_t dc_client_parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx)
+uint32_t dc_client_json_result_parse(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx)
 {
 	uint32_t r_code = 1;
 
@@ -92,7 +91,6 @@ uint32_t dc_client_parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* 
 
 				json_object_foreach(params, key, v) {
 					if (v && json_is_number(v)) {
-						//printf("%s -> %d\r\n", key, json_integer_value(v));
 						dc_VAL_t rv;
 						rv.name = (char*)malloc(strlen(key)+1);
 						assert(rv.name);

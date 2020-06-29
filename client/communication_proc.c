@@ -15,7 +15,7 @@
 #include "../tools/mbuf.h"
 
 
-static uint32_t dc_client_socket_send(int socket_id, char* data, size_t data_sz)
+static uint32_t dc_client_net_socket_send(int socket_id, char* data, size_t data_sz)
 {
 	while (data_sz) {
 		ssize_t s_code = send(socket_id, data, data_sz, 0);
@@ -30,20 +30,22 @@ static uint32_t dc_client_socket_send(int socket_id, char* data, size_t data_sz)
 }
 
 
-uint32_t dc_client_send_calculation_job(char* req, dc_client_calculation_result_cb_t p_fn)
+uint32_t dc_client_net_send_calculation_job(char* req, dc_client_calculation_result_cb_t p_fn)
 {
 	uint32_t r_code = UINT32_MAX;
 
 	int s_id = socket(AF_INET, SOCK_STREAM, 0/*IPPRO_TCP*//*SOCK_NONBLOCK*/);
 	
-	if (s_id!=-1) {
+	struct sockaddr_in* sa = dc_client_cfg_balancer_addr();
 
-		int r = connect(s_id, (struct sockaddr*)dc_client_cfg_balancer_addr(), sizeof(struct sockaddr_in));
+	if ( (s_id!=-1) && sa) {
+
+		int r = connect(s_id, (struct sockaddr*)sa, sizeof(*sa));
 
 		if (!r) {
 
-			if ( (!dc_client_socket_send(s_id, req, strlen(req))) && 
-				 (!dc_client_socket_send(s_id, MESSAGE_DELIMITER, strlen(req))) ) {
+			if ( (!dc_client_net_socket_send(s_id, req, strlen(req))) && 
+				 (!dc_client_net_socket_send(s_id, MESSAGE_DELIMITER, strlen(req))) ) {
 
 				buf_t rx_buf;
 				buf_create(&rx_buf);
@@ -52,7 +54,7 @@ uint32_t dc_client_send_calculation_job(char* req, dc_client_calculation_result_
 				
 				while (UINT32_MAX == r_code) {
 
-					ssize_t rcv_code = recv(s_id, buf, sizeof(buf), 0/*MSG_DONTWAIT | MSG_PEEK*/);
+					ssize_t rcv_code = recv(s_id, buf, sizeof(buf), 0);
 
 					if (rcv_code>0) {
 

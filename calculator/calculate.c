@@ -17,7 +17,7 @@
 
 
 //#define DEBUG_PRINTF
-static void dc_calc_PRINT(mstack_t* s);
+//static void dc_calc_PRINT(mstack_t* s);
 
 
 static char* dc_calc_get_string(item_t* p)
@@ -31,7 +31,7 @@ static char* dc_calc_get_string(item_t* p)
 }
 
 
-uint8_t dc_calc_calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
+uint8_t dc_calc_rpn_ctx_calculate(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 {
 	NUM_t a, b;
 	item_t* temp_item;
@@ -108,7 +108,6 @@ uint8_t dc_calc_calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 			}
 		}
 
-		dc_calc_PRINT(&stack);
 	}
 
 	if (!r_code) {
@@ -129,9 +128,9 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 	
 	uint8_t r_code = 0;
 
-	if (!dc_calc_init_ctx(&ctx)) {
+	if (!dc_calc_rpn_ctx_init(&ctx)) {
 		
-		if (!dc_calc_convert_to_rpn(&ctx, input_str)) {
+		if (!dc_calc_rpn_ctx_convert(&ctx, input_str)) {
 		
 #ifdef DEBUG_PRINTF
 			uint32_t i, j;
@@ -148,12 +147,12 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 			}
 			printf("\r\n");
 #endif 
-			r_code = dc_calc_calculate_RPN(&ctx, var_store, res);
+			r_code = dc_calc_rpn_ctx_calculate(&ctx, var_store, res);
 
 		} else{
 			r_code = 1;
 		}
-		dc_calc_deinit_ctx(&ctx);
+		dc_calc_rpn_ctx_deinit(&ctx);
 	}
 
 	if (r_code && err_str) {
@@ -163,24 +162,7 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 	return r_code;
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////
-
-
-void dc_calc_PRINT(mstack_t* s)
-{
-#ifdef DEBUG_PRINTF
-	size_t j;
-	for (j=0; j<stack_size(s); ++j) {
-		printf("%d  ", *((uint32_t*)stack_element_at(s, j)) );
-	}
-	printf("\r\n");
-#endif
-}
-
-
-
 
 #ifdef MAKE_TEST
 

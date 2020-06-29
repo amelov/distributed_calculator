@@ -27,7 +27,7 @@ operator 	precedence 	associativity 	operation
 
 
 //#define DEBUG_PRINTF
-static void dc_calc_PRINT(char* s, ctx_t* ctx);
+static void dc_calc_rpn_ctx_PRINT(char* s, ctx_t* ctx);
 
 
 
@@ -54,7 +54,7 @@ static int dc_calc_parse_item(char **p_s, item_t* i)
 
 	if (isdigit(*s)) {
 
-		i->t = NUMBER_T;		
+		i->t = NUMBER_T;
 		while ( (*s) && isalnum(*s) ) {
 			i->len++;
 			s++;
@@ -70,7 +70,7 @@ static int dc_calc_parse_item(char **p_s, item_t* i)
 			s++;
 		}
 		*p_s = s;
-		return 1;		
+		return 1;
 
 	} else {
 
@@ -122,18 +122,18 @@ static int dc_calc_parse_item(char **p_s, item_t* i)
 
 #define stack_push(x)	stack_push_back(&ctx->stack, x)
 #define stack_pop()		stack_pop_back(&ctx->stack)
-#define stack_peek()		((item_t*)mstack_top(&ctx->stack))
+#define stack_peek()	((item_t*)mstack_top(&ctx->stack))
 #define stack_sz()		stack_size(&ctx->stack)
 
 //////////////////////////////////////////////////////////////////////////
 
 
 
-uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
+uint8_t dc_calc_rpn_ctx_convert(ctx_t* ctx, char* s)
 {
 	item_t temp_item;
 
-	dc_calc_PRINT(s, ctx);
+	dc_calc_rpn_ctx_PRINT(s, ctx);
 
 	while (*s) {
 
@@ -145,7 +145,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 				if ( out_push(&temp_item) ) {
 					ctx->err_str = "not enough memory";
 				}
-				dc_calc_PRINT(s, ctx);
+				dc_calc_rpn_ctx_PRINT(s, ctx);
 				break;
 
 			case OPERATION_T:
@@ -159,16 +159,16 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 						} else {
 							break;
 						}
-						dc_calc_PRINT(s, ctx);
+						dc_calc_rpn_ctx_PRINT(s, ctx);
 					}
 					stack_push(&temp_item);
-					dc_calc_PRINT(s, ctx);
+					dc_calc_rpn_ctx_PRINT(s, ctx);
 				}
 				break;
 
 			case OPEN_BRACE_T:
 				stack_push(&temp_item);
-				dc_calc_PRINT(s, ctx);
+				dc_calc_rpn_ctx_PRINT(s, ctx);
 				break;
 
 			case CLOSE_BRACE_T:
@@ -181,7 +181,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 							break;
 						}
 					}
-					dc_calc_PRINT(s, ctx);
+					dc_calc_rpn_ctx_PRINT(s, ctx);
 				}
 				// TODO: if (top != "(") throw new ArgumentException("No matching left parenthesis.");
 				break;
@@ -201,7 +201,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 		out_push( stack_pop() );
 	}
 
-	dc_calc_PRINT(s, ctx);
+	dc_calc_rpn_ctx_PRINT(s, ctx);
 
 	return (ctx->err_str != NULL);
 }
@@ -211,7 +211,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 //////////////////////////////////////////////////////////////////////////
 
 
-void dc_calc_PRINT(char* s, ctx_t* ctx)
+void dc_calc_rpn_ctx_PRINT(char* s, ctx_t* ctx)
 {
 #ifdef DEBUG_PRINTF
 	item_t* p;

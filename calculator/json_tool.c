@@ -29,7 +29,6 @@ uint8_t dc_calc_parse_incoming_json(const char* in_msg, mstack_t* out_exp, var_s
 			size_t idx;
 
 			stack_create(out_exp, sizeof(p_str), json_array_size(j_exp));
-			//stack_create(&s->result, sizeof(NUM_t), json_array_size(j_exp));
 
 			json_array_foreach(j_exp, idx, v) {
 				if (v && json_is_string(v)) {

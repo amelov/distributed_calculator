@@ -6,6 +6,6 @@
 #include "common.h"
 
 
-char* dc_client_create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx);
+char* dc_client_json_create(mstack_t* var_ctx, mstack_t* expressions_ctx);
 
-uint32_t dc_client_parse_result_json(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx);
+uint32_t dc_client_json_result_parse(char* in_str, mstack_t* var_ctx, mstack_t* exp_ctx);

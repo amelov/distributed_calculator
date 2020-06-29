@@ -37,13 +37,19 @@ typedef struct calc_ctx_t {
 } calc_ctx_t;
 
 
+typedef struct dc_balancer_cfg_ctx_t { 
+	mstack_t calc_addr_stack;
+	uint16_t server_port;
+} dc_balancer_cfg_ctx_t;
 
-uint8_t  dc_balancer_load_config(const char* fn);
+void dc_balancer_cfg_create(dc_balancer_cfg_ctx_t* ctx);
 
-uint16_t dc_balancer_get_server_port();
+uint8_t  dc_balancer_cfg_load(const char* fn);
+
+uint16_t dc_balancer_cfg_get_server_port();
 
 
-uint32_t dc_balancer_get_calc_host_addr(const size_t idx, calc_ctx_t* addr);
-size_t   dc_balancer_get_calc_host_count();
+uint32_t dc_balancer_cfg_get_calc_host_addr(const size_t idx, calc_ctx_t* addr);
+size_t   dc_balancer_cfg_get_calc_host_count();
 
 

@@ -47,7 +47,6 @@ static void dc_calc_on_after_calc_work_cb(uv_work_t* req, int status)
 
 	if (t_ctx) {
 		t_ctx->ready_flag = 1;
-		//printf("on_after_calc_work_cb: \"%s\" -> %lld\r\n", t_ctx->expression_str, t_ctx->result);
 
 		uint32_t ready_thread_count = 0;
 
