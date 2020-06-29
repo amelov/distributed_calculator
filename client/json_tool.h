@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "../tools/mstack.h"
-#include "../tools/dc_common.h"
+#include "common.h"
 
 
 char* dc_client_create_req_json(mstack_t* var_ctx, mstack_t* expressions_ctx);

@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 
 #define BALANCER_DEFAULT_PORT 6500
 
