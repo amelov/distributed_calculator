@@ -3,30 +3,31 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
-
-char *str_create_copy(char* s)
+char *str_create_copy(const char* s)
 {
-	char *r_code = malloc(strlen(s) + 1);
-	strcpy(r_code, s);
-	return r_code;
+	char *res_str = malloc(strlen(s) + 1);
+	assert(res_str);
+	strcpy(res_str, s);
+	return res_str;
 }
 
 
-char* stripwhite(char* in_str)
+char* str_strip_white(char* in_str)
 {
-	char* r_code = in_str;
-	for (; whitespace(*r_code); r_code++) {
+	char* res_str = in_str;
+	for (; whitespace(*res_str); res_str++) {
 		;
 	}
 
-	if (*r_code != 0) {
-		char* t = r_code + strlen(r_code) - 1;
-		while ( (t > r_code) && whitespace(*t)) {
+	if (*res_str != 0) {
+		char* t = res_str + strlen(res_str) - 1;
+		while ( (t > res_str) && whitespace(*t)) {
 			t--;
 		}
 		*++t = '\0';
 	}
 
-	return r_code;
+	return res_str;
 }

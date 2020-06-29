@@ -4,6 +4,6 @@
 #include <stdint.h>
 
 
-typedef void (*calc_result_cb_t)(char* result_str);
+typedef void (*dc_client_calculation_result_cb_t)(char* result_str);
 
-uint32_t send_to_calc(char* req, calc_result_cb_t p_fn);
+uint32_t dc_client_send_calculation_job(char* req, dc_client_calculation_result_cb_t p_fn);

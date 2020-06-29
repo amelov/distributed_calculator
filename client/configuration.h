@@ -7,6 +7,6 @@
 
 
 
-void cfg_create(const uint32_t ip, const uint16_t port);
+void dc_client_cfg_create(const uint32_t ip, const uint16_t port);
 
-struct sockaddr_in* cfg_balancer_addr();
+struct sockaddr_in* dc_client_cfg_balancer_addr();

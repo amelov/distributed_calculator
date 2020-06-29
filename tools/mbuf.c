@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 
 void buf_create(buf_t* b)
@@ -14,6 +15,7 @@ void buf_create(buf_t* b)
 buf_t* buf_make()
 {
 	buf_t* r_code = malloc(sizeof(*r_code));	
+	assert(r_code);
 	r_code->data_sz = 0;
 	r_code->data = NULL;
 	return r_code;
@@ -36,6 +38,7 @@ void buf_skip_first_byte(buf_t* b, const size_t skip_count)
 	    b->data_sz -= skip_count;
 		if (b->data_sz) {
 			new_buf = (char*)malloc(b->data_sz);
+			assert(new_buf);
 			memcpy(new_buf, &b->data[skip_count], b->data_sz);
 		}
 		free(b->data);

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <memory.h>
 #include <malloc.h>
+#include <assert.h>
 
 
 void list_create(list_t* p_list)
@@ -21,6 +22,7 @@ void list_add(list_t* p_list, void* data, const size_t data_len)
 	}
 
 	p->next = (list_t*)malloc( sizeof(list_t) + data_len - 1);
+	assert(p->next);	
 	if (p->next) {
 
 		p_list->sz++;	// header size

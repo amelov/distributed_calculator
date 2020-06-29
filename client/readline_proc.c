@@ -1,9 +1,14 @@
 
-#include "console_proc.h"
+#include "readline_proc.h"
+
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
+#include <stdlib.h>
+#include <unistd.h>
 
+#define READLINE_LIBRARY
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "../tools/mstack.h"
 #include "../tools/mstring.h"
@@ -15,7 +20,7 @@ enum {
 	NO_ERROR = 0,
 	PARSE_ERROR = 1,
 	NO_EXPRESSION_ERROR = 2,
-	INVALID_NUM_ERROR,
+	INVALID_NUM_ERROR = 3,
 };
 
 
@@ -44,27 +49,62 @@ Command_t commands[] = {
 
 
 
-void on_calc_result_cb(char* result_str);
-
-
-
-static void create_val_ctx(mstack_t* p1, mstack_t* p2)
+static void create_console_ctx(mstack_t* p1, mstack_t* p2)
 {
-	stack_create(p1, sizeof(VAL_t), 16);
-	stack_create(p2, sizeof(VAL_t), 16);
+	stack_create(p1, sizeof(dc_VAL_t), 16);
+	stack_create(p2, sizeof(dc_VAL_t), 16);
 }
 
 
-static void destroy_val_ctx(mstack_t* p1, mstack_t* p2)
+static void destroy_console_ctx(mstack_t* p1, mstack_t* p2)
 {
 	for (int id=0; id<2; id++) {
 		mstack_t* p = id? p2 : p1;
 		for (size_t i=0; i<stack_size(p); i++) {
-			VAL_t* v = stack_element_at(p, i);
+			dc_VAL_t* v = stack_element_at(p, i);
 			free(v->name);
 		}
 		stack_destroy(p);
 	}
+}
+
+
+static void dc_client_receive_calc_result_cb(char* result_str)
+{
+	mstack_t var_ctx;
+	mstack_t exp_ctx;
+
+	create_console_ctx(&var_ctx, &exp_ctx);
+
+	if ( !dc_client_parse_result_json(result_str, &var_ctx, &exp_ctx) ) {
+
+		printf("\r\n");
+
+		size_t i = 0;
+		dc_VAL_t* v;
+		while ( NULL != (v=stack_element_at(&var_ctx, i)) ) {
+			if (i)	{
+				printf("; ");
+			}
+			printf("%s = %ld", v->name, v->value);
+			i++;
+		}
+
+		if (i) {
+			printf("\r\n");
+		}
+
+		i = 0;
+		while ( NULL != (v=stack_element_at(&exp_ctx, i)) ) {
+			printf("%s\r\n", v->name);
+			i++;
+		}
+
+	} else {
+		printf("Error parse result JSON!\r\n");
+	}
+
+	destroy_console_ctx(&var_ctx, &exp_ctx);
 }
 
 
@@ -100,9 +140,8 @@ static int set_cmd(char* param)
 	}
 
 	if ( (*name_str) && (*value_str) ) {
-		VAL_t a;
+		dc_VAL_t a;
 		a.name = str_create_copy(name_str);
-
 
 		// Check number value
 		char* p = value_str;
@@ -123,7 +162,7 @@ static int set_cmd(char* param)
 
 static int add_cmd(char* param)
 {
-	VAL_t a;
+	dc_VAL_t a;
 	a.name = str_create_copy(param);
 	a.value = 0;
 	stack_push_back(&input_exp_ctx, &a);
@@ -131,62 +170,53 @@ static int add_cmd(char* param)
 }
 
 
-int calculate_cmd(char* param)
+static int calculate_cmd(char* param)
 {
 	if (stack_size(&input_exp_ctx)) {
-		char* out_json = create_req_json(&input_var_ctx, &input_exp_ctx);
+		char* out_json = dc_client_create_req_json(&input_var_ctx, &input_exp_ctx);
 		if (out_json) {
-			send_to_calc(out_json, &on_calc_result_cb);
+			dc_client_send_calculation_job(out_json, &dc_client_receive_calc_result_cb);
 		}
-		destroy_val_ctx(&input_var_ctx, &input_exp_ctx);
-		create_val_ctx(&input_var_ctx, &input_exp_ctx);
+		destroy_console_ctx(&input_var_ctx, &input_exp_ctx);
+		create_console_ctx(&input_var_ctx, &input_exp_ctx);
 		return NO_ERROR;
 	}
 	return NO_EXPRESSION_ERROR;
 }
 
 
-void on_calc_result_cb(char* result_str)
+static char* command_generator(const char* text, int state)
 {
-	//printf("RESULT: %s", result_str);
-	mstack_t var_ctx;
-	mstack_t exp_ctx;
+	static int list_index, len;
+	char *name;
 
-	create_val_ctx(&var_ctx, &exp_ctx);
-
-	if ( !parse_result_json(result_str, &var_ctx, &exp_ctx) ) {
-
-		printf("\r\n");
-
-		size_t i = 0;
-		VAL_t* v;
-		while ( NULL != (v=stack_element_at(&var_ctx, i)) ) {
-			if (i)	{
-				printf("; ");
-			}
-			printf("%s = %ld", v->name, v->value);
-			i++;
-		}
-
-		if (i) {
-			printf("\r\n");
-		}
-
-		i = 0;
-		while ( NULL != (v=stack_element_at(&exp_ctx, i)) ) {
-			printf("%s\r\n", v->name);
-			i++;
-		}
-
-	} else {
-		printf("Error parse result JSON!\r\n");
+	if (!state) {
+		list_index = 0;
+		len = strlen(text);
 	}
 
-	destroy_val_ctx(&var_ctx, &exp_ctx);
+	while (NULL != (name = commands[list_index].name)) {
+		list_index++;
+		if (strncmp (name, text, len) == 0) {
+			return str_create_copy(name);
+		}
+    }
+
+	return (char *)NULL;
 }
 
 
-void user_enter_line(char* in_str)
+static char** command_completion(const char *text, int start, int end)
+{
+	char **matches = (char **)NULL;
+	if (start == 0) {
+		matches = rl_completion_matches(text, command_generator);
+	}
+	return (matches);
+}
+
+
+static void make_operation(char* in_str)
 {
 	if (strstr(in_str, ";")) {
 		char *cmd_str = NULL;
@@ -211,7 +241,6 @@ void user_enter_line(char* in_str)
 		uint8_t find_cmd_flag = 0;
 		for (int cmd_idx=0; commands[cmd_idx].name; ++cmd_idx) {
 			if (strcmp(cmd_str, commands[cmd_idx].name) == 0) { 
-
 
 				find_cmd_flag = 1;
 				while ( (i<len) && whitespace(in_str[i]) ) {
@@ -254,36 +283,29 @@ void user_enter_line(char* in_str)
 
 }
 
-
 ////////////////////////////////////////////////////////////////////
 
-
-uint32_t console_handler()
+int dc_client_start_readline()
 {
-	char c = 0;
+    printf("\n");
+    
+    rl_attempted_completion_function = command_completion;
+    rl_bind_key('\t', rl_complete);
 
-	create_val_ctx(&input_var_ctx, &input_exp_ctx);
+    create_console_ctx(&input_var_ctx, &input_exp_ctx);
 
-	mstack_t console_input_stack;
-	stack_create(&console_input_stack, sizeof(c), 128);
-	printf(">");
+    while (1) {
+        char* input = readline("> ");
+	    if (!*input) {
+	    	return 0;
+	    }
 
-	while ( (c=getchar()) ) {
+	    add_history(input);
+		make_operation(input);
+		free(input);
+    }
 
-		if (c=='\n') {
-			c = 0;
-			stack_push_back(&console_input_stack, &c);
-			char* input_str = (char*)calloc(1, stack_size(&console_input_stack));
-			strcpy(input_str, (char*)stack_raw_data(&console_input_stack));
-
-			user_enter_line(input_str);
-
-			free(input_str);
-			stack_reinit(&console_input_stack);
-			printf(">");
-		} else {
-			stack_push_back(&console_input_stack, &c);
-		}
-	}
-	return 0;
+    destroy_console_ctx(&input_var_ctx, &input_exp_ctx);
+    return 0;
 }
+

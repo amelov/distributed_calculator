@@ -4,7 +4,7 @@
 #include <memory.h>
 #include <malloc.h>
 #include <stdio.h>
-
+#include <assert.h>
 
 
 uint8_t stack_create(mstack_t* s, const uint32_t element_size, const uint32_t element_count)
@@ -15,6 +15,7 @@ uint8_t stack_create(mstack_t* s, const uint32_t element_size, const uint32_t el
 		s->_max_element_count = element_count;
 		s->_element_size = element_size;
 		s->_data_ptr = malloc(element_size * element_count);
+		assert(s->_data_ptr);		
 		
 		if (s->_data_ptr) {
 			return stack_reinit(s);

@@ -7,6 +7,6 @@
 
 
 
-char *str_create_copy(char* s);
+char *str_create_copy(const char* s);
 
 char* stripwhite(char* in_str);
