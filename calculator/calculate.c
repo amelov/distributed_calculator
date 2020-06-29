@@ -17,10 +17,10 @@
 
 
 //#define DEBUG_PRINTF
-static void PRINT(mstack_t* s);
+static void dc_calc_PRINT(mstack_t* s);
 
 
-static char* get_string(item_t* p)
+static char* dc_calc_get_string(item_t* p)
 {
 	char* r_code = (char*)malloc(p->len+1);
 	if (r_code) {
@@ -31,7 +31,7 @@ static char* get_string(item_t* p)
 }
 
 
-uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
+uint8_t dc_calc_calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 {
 	NUM_t a, b;
 	item_t* temp_item;
@@ -48,7 +48,7 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 
 		if (temp_item->t == NUMBER_T) {
 			
-			char* s = get_string(temp_item);
+			char* s = dc_calc_get_string(temp_item);
 			a = atoll(s);	// TODO: ?
 			stack_push_back(&stack, &a);
 			free(s);
@@ -56,8 +56,8 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 		} else if (temp_item->t == VARIABLE_T) {
 
 			NUM_t v;
-			char* s = get_string(temp_item);
-			if (var_find(var_store, s, &v)) {
+			char* s = dc_calc_get_string(temp_item);
+			if (dc_calc_var_find(var_store, s, &v)) {
 				stack_push_back(&stack, &v);
 			}
 			free(s);
@@ -108,7 +108,7 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 			}
 		}
 
-		PRINT(&stack);
+		dc_calc_PRINT(&stack);
 	}
 
 	if (!r_code) {
@@ -129,7 +129,7 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 	
 	uint8_t r_code = 0;
 
-	if (!init_ctx(&ctx)) {
+	if (!dc_calc_init_ctx(&ctx)) {
 		
 		if (!dc_calc_convert_to_rpn(&ctx, input_str)) {
 		
@@ -148,12 +148,12 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 			}
 			printf("\r\n");
 #endif 
-			r_code = calculate_RPN(&ctx, var_store, res);
+			r_code = dc_calc_calculate_RPN(&ctx, var_store, res);
 
 		} else{
 			r_code = 1;
 		}
-		deinit_ctx(&ctx);
+		dc_calc_deinit_ctx(&ctx);
 	}
 
 	if (r_code && err_str) {
@@ -168,7 +168,7 @@ uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, c
 //////////////////////////////////////////////////////////////////////////
 
 
-void PRINT(mstack_t* s)
+void dc_calc_PRINT(mstack_t* s)
 {
 #ifdef DEBUG_PRINTF
 	size_t j;

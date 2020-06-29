@@ -141,8 +141,6 @@ static void dc_balancer_on_read_complete(uv_stream_t *client, ssize_t nread, con
 
     } else if (nread > 0) {
 
-        
-
     	if (c) {
 
             buf_add(&c->rx, buf->base, nread);

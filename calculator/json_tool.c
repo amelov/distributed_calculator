@@ -57,16 +57,16 @@ uint8_t dc_calc_parse_incoming_json(const char* in_msg, mstack_t* out_exp, var_s
 
 				const char *key = NULL;
 
-				var_init(variable, json_object_size(params));
+				dc_calc_var_init(variable, json_object_size(params));
 				
 				json_object_foreach(params, key, v) {
 					if (v && json_is_number(v)) {
 						//printf("%s -> %d\r\n", key, json_integer_value(v));
-						var_add(variable, key, json_integer_value(v));
+						dc_calc_var_add(variable, key, json_integer_value(v));
 					}
 				}
 
-				var_add_complete(variable);
+				dc_calc_var_add_complete(variable);
 			}
 
 		}
@@ -87,13 +87,13 @@ char* dc_calc_create_outgoing_json(var_store_t* var, session_data_t* sess)
 	if (root) {	
 		size_t i = 0;
 
-		if (var && var_size(var)) {
+		if (var && dc_calc_var_size(var)) {
 			json_t *params_obj = json_object();
-			for (i=0; i<var_size(var); ++i) {
+			for (i=0; i<dc_calc_var_size(var); ++i) {
 				char* key;
 				NUM_t* n;
 
-				if (!var_element_at(var, i, &key, &n)) {
+				if (!dc_calc_var_element_at(var, i, &key, &n)) {
 					//printf("%s = %d\r\n", key, *n);
 					json_object_set_new(params_obj, key, json_integer(*n));
 				}

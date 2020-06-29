@@ -27,20 +27,20 @@ operator 	precedence 	associativity 	operation
 
 
 //#define DEBUG_PRINTF
-static void PRINT(char* s, ctx_t* ctx);
+static void dc_calc_PRINT(char* s, ctx_t* ctx);
 
 
 
 
 //////////////////////////////////////////////////////////////////////////
 
-static uint8_t ismathoperation(const char c)
+static uint8_t dc_calc_is_math_operation(const char c)
 {
 	return (c=='+') || (c=='-') || (c=='*') || (c=='/') || (c=='^') || (c=='(') || (c==')');
 }
 
 
-static int parse_item(char **p_s, item_t* i)
+static int dc_calc_parse_item(char **p_s, item_t* i)
 {
 	char* s = *p_s;
 
@@ -65,7 +65,7 @@ static int parse_item(char **p_s, item_t* i)
 	} else if (isalpha(*s)) {
 
 		i->t = VARIABLE_T;
-		while ( (*s) && (*s!=' ') && (!ismathoperation(*s)) ) {
+		while ( (*s) && (*s!=' ') && (!dc_calc_is_math_operation(*s)) ) {
 			i->len++;
 			s++;
 		}
@@ -133,11 +133,11 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 {
 	item_t temp_item;
 
-	PRINT(s, ctx);
+	dc_calc_PRINT(s, ctx);
 
 	while (*s) {
 
-		if (parse_item(&s, &temp_item)) {
+		if (dc_calc_parse_item(&s, &temp_item)) {
 
 			switch (temp_item.t) {
 			case NUMBER_T:
@@ -145,7 +145,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 				if ( out_push(&temp_item) ) {
 					ctx->err_str = "not enough memory";
 				}
-				PRINT(s, ctx);
+				dc_calc_PRINT(s, ctx);
 				break;
 
 			case OPERATION_T:
@@ -159,16 +159,16 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 						} else {
 							break;
 						}
-						PRINT(s, ctx);
+						dc_calc_PRINT(s, ctx);
 					}
 					stack_push(&temp_item);
-					PRINT(s, ctx);
+					dc_calc_PRINT(s, ctx);
 				}
 				break;
 
 			case OPEN_BRACE_T:
 				stack_push(&temp_item);
-				PRINT(s, ctx);
+				dc_calc_PRINT(s, ctx);
 				break;
 
 			case CLOSE_BRACE_T:
@@ -181,7 +181,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 							break;
 						}
 					}
-					PRINT(s, ctx);
+					dc_calc_PRINT(s, ctx);
 				}
 				// TODO: if (top != "(") throw new ArgumentException("No matching left parenthesis.");
 				break;
@@ -201,7 +201,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 		out_push( stack_pop() );
 	}
 
-	PRINT(s, ctx);
+	dc_calc_PRINT(s, ctx);
 
 	return (ctx->err_str != NULL);
 }
@@ -211,7 +211,7 @@ uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 //////////////////////////////////////////////////////////////////////////
 
 
-void PRINT(char* s, ctx_t* ctx)
+void dc_calc_PRINT(char* s, ctx_t* ctx)
 {
 #ifdef DEBUG_PRINTF
 	item_t* p;
@@ -239,7 +239,7 @@ void PRINT(char* s, ctx_t* ctx)
 
 #ifdef MAKE_TEST
 
-void get_result_string(ctx_t* c, mstack_t* out_stack)
+void dc_calc_get_result_string(ctx_t* c, mstack_t* out_stack)
 {
 	size_t i, j;
 	char s_eol = 0;
@@ -285,7 +285,7 @@ uint8_t dc_calc_convert_to_rpn_TEST()
 	
 	uint32_t tid = 0;
 	while (test_case[tid].in_str) {
-		init_ctx(&ctx);
+		dc_calc_init_ctx(&ctx);
 		if (!convert_to_rpn(&ctx, test_case[tid].in_str)) {
 
 			get_result_string(&ctx, &res_stack);
@@ -304,7 +304,7 @@ uint8_t dc_calc_convert_to_rpn_TEST()
 		} else {
 			printf("convert error: %s\r\n", ctx.err_str);
 		}
-		deinit_ctx(&ctx);
+		dc_calc_deinit_ctx(&ctx);
 		++tid;
 	}	
 

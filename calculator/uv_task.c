@@ -91,7 +91,7 @@ static void dc_calc_on_after_calc_work_cb(uv_work_t* req, int status)
 			while (p_task) {
 				calc_thread_t* t_d = list_data(p_task);
 				free(t_d->expression_str);
-				var_destroy(&t_d->var);
+				dc_calc_var_destroy(&t_d->var);
 				//t_d->error_str;	//! pointer to const string!
 				p_task = list_next(p_task);
 			}
@@ -130,12 +130,12 @@ uint32_t dc_calc_input_json_msg_handler(uv_stream_t *client, const char* json_st
 			ctc->expression_str = str_create_copy(*expression_str);
 			ctc->error_str = NULL;
 
-			var_init(&ctc->var, var_size(&variable));
-			for (int i=0; i<var_size(&variable); ++i) {
+			dc_calc_var_init(&ctc->var, dc_calc_var_size(&variable));
+			for (int i=0; i<dc_calc_var_size(&variable); ++i) {
 				char* key; 
 				NUM_t* val;
-				if (!var_element_at(&variable, i, &key, &val)) {
-					var_add(&ctc->var, key, *val);
+				if (!dc_calc_var_element_at(&variable, i, &key, &val)) {
+					dc_calc_var_add(&ctc->var, key, *val);
 				}
 			}
 
@@ -165,7 +165,7 @@ uint32_t dc_calc_input_json_msg_handler(uv_stream_t *client, const char* json_st
 			while (NULL!=(data_ptr=stack_pop_back(&expression))) {
 				free(*data_ptr);
 			}
-			var_destroy(&variable);
+			dc_calc_var_destroy(&variable);
 		}
 
 	} else {
