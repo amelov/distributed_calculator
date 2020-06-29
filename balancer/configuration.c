@@ -10,7 +10,7 @@ static mstack_t calc_addr_stack = {0};
 static uint16_t server_port = SERVER_PORT;
 
 
-uint8_t load_config(const char* fn)
+uint8_t dc_balancer_load_config(const char* fn)
 {
 	json_error_t error;
 	json_t* root = json_load_file(fn, 0, &error);
@@ -56,7 +56,7 @@ uint8_t load_config(const char* fn)
 }
 
 
-uint32_t get_calc_host_addr(const size_t idx, calc_ctx_t* c)
+uint32_t dc_balancer_get_calc_host_addr(const size_t idx, calc_ctx_t* c)
 {
 	if (c && (idx < stack_size(&calc_addr_stack))) {
 		//return (client_descr_t*)stack_element_at(&calc_host, idx);
@@ -67,13 +67,13 @@ uint32_t get_calc_host_addr(const size_t idx, calc_ctx_t* c)
 }
 
 
-size_t get_calc_host_count()
+size_t dc_balancer_get_calc_host_count()
 {
 	return stack_size(&calc_addr_stack);
 }
 
 
-uint16_t get_server_port()
+uint16_t dc_balancer_get_server_port()
 {
 	return server_port;
 }

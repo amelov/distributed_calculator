@@ -31,26 +31,19 @@
 #define MESSAGE_DELIMITER "\n"
 
 
-//enum ADDR_STATE_t {
-//	UNDEF_STATE = -1,
-//	READY_STATE = 0,
-//	CONNECTING_STATE = 1,
-//} ADDR_STATE_t;
-
 typedef struct calc_ctx_t {
 	struct sockaddr_in addr;
 	//enum ADDR_STATE_t state;
 } calc_ctx_t;
 
 
-uint8_t load_config(const char* fn);
 
-uint16_t get_server_port();
+uint8_t  dc_balancer_load_config(const char* fn);
+
+uint16_t dc_balancer_get_server_port();
 
 
-uint32_t get_calc_host_addr(const size_t idx, calc_ctx_t* addr);
-size_t  get_calc_host_count();
-
-//client_descr_t* find_client_by_stream(uv_stream_t* c);
+uint32_t dc_balancer_get_calc_host_addr(const size_t idx, calc_ctx_t* addr);
+size_t   dc_balancer_get_calc_host_count();
 
 

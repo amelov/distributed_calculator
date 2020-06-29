@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 
 #include "configuration.h"
 
@@ -25,7 +26,7 @@ typedef struct socket_ctx_t {
 
 
 
-socket_ctx_t* init_client_ctx()
+static socket_ctx_t* dc_balancer_init_client_ctx()
 {
     static uint32_t _user_client_id = 0;
 
@@ -37,7 +38,7 @@ socket_ctx_t* init_client_ctx()
 }
 
 
-void destroy_client_ctx(socket_ctx_t* c)
+static void dc_balancer_destroy_client_ctx(socket_ctx_t* c)
 {
     if (c) {
         buf_destroy(&c->rx);
@@ -47,14 +48,15 @@ void destroy_client_ctx(socket_ctx_t* c)
 
 //////////////////////////////////////////////////////////////////////////
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) 
+static void dc_balancer_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) 
 {
-    buf->base = (char*)malloc(suggested_size);
-    buf->len = suggested_size;
+	buf->base = (char*)malloc(suggested_size);
+	assert(buf->base);
+	buf->len = suggested_size;
 }
 
 
-void on_write_complete(uv_write_t *req, int status) 
+static void dc_balancer_on_write_complete(uv_write_t *req, int status) 
 {
     if (status) {
         fprintf(stderr, "Write error %s\n", uv_strerror(status));
@@ -63,22 +65,22 @@ void on_write_complete(uv_write_t *req, int status)
 }
 
 
-void on_close_complete(uv_handle_t *client)
+static void dc_balancer_on_close_complete(uv_handle_t *client)
 {
     socket_ctx_t* s_c = client->data;
     printf("SRV[%d]: on_close_complete\r\n", s_c->id);
-    destroy_client_ctx((socket_ctx_t*)client->data);
+    dc_balancer_destroy_client_ctx((socket_ctx_t*)client->data);
     free(client);
 }
 
 
-uint32_t find_free_calc_client(calc_ctx_t* c)
+static uint32_t dc_balancer_find_free_calc_client(calc_ctx_t* c)
 {
     uint32_t r_code = 1;   
     static size_t base_calculator_id = 0;
 
-    for (int i=0; i<get_calc_host_count(); i++) {
-        if ( !get_calc_host_addr((base_calculator_id + i) % get_calc_host_count(), c) ) {
+    for (int i=0; i<dc_balancer_get_calc_host_count(); i++) {
+        if ( !dc_balancer_get_calc_host_addr((base_calculator_id + i) % dc_balancer_get_calc_host_count(), c) ) {
             r_code = 0;
             break;
         }
@@ -88,7 +90,7 @@ uint32_t find_free_calc_client(calc_ctx_t* c)
 }
 
 
-static void on_calc_proc(uv_stream_t* req_client, char* req_str, char* result_str)
+static void dc_balancer_on_calc_proc(uv_stream_t* req_client, char* req_str, char* result_str)
 {
     if (uv_is_active((uv_handle_t*)req_client)) {
 
@@ -99,15 +101,16 @@ static void on_calc_proc(uv_stream_t* req_client, char* req_str, char* result_st
 
         printf("SRV[%d]: send_to_user -> %s\r\n", c->id, result_str);
         uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+	assert(req);
         uv_buf_t wrbuf = uv_buf_init(result_str, strlen(result_str));
-        uv_write(req, req_client, &wrbuf, 1, on_write_complete);
+        uv_write(req, req_client, &wrbuf, 1, dc_balancer_on_write_complete);
     }
     free(req_str);
     free(result_str);
 }
 
 
-static void on_calc_error(uv_stream_t* req_client, char* req_str)
+static void dc_balancer_on_calc_error(uv_stream_t* req_client, char* req_str)
 {
     socket_ctx_t* c = (socket_ctx_t*)req_client->data;
 
@@ -116,8 +119,8 @@ static void on_calc_error(uv_stream_t* req_client, char* req_str)
 
 
     calc_ctx_t c_addr;
-    if (!find_free_calc_client(&c_addr)) {
-        if (send_req_to_calc(req_client, req_str, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
+    if (!dc_balancer_find_free_calc_client(&c_addr)) {
+        if (dc_balancer_send_job_to_calc(req_client, req_str, &c_addr.addr, &dc_balancer_on_calc_proc, &dc_balancer_on_calc_error)) {
             printf("SRV[%d]: send_req_to_calc - error!\r\n", c->id);
             free(req_str);
         }
@@ -125,7 +128,7 @@ static void on_calc_error(uv_stream_t* req_client, char* req_str)
 }
 
 
-void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
+static void dc_balancer_on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
     socket_ctx_t* c = (socket_ctx_t*)client->data;
 
@@ -133,7 +136,7 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
         //if (nread != UV_EOF) 
         {
             fprintf(stderr, "SRV[%d]: Read error %s\n", c->id, uv_err_name(nread));
-            uv_close((uv_handle_t*) client, on_close_complete);
+            uv_close((uv_handle_t*) client, dc_balancer_on_close_complete);
         }
 
     } else if (nread > 0) {
@@ -153,8 +156,8 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
                 printf("SRV[%d]: find msg -> [%s]\r\n", c->id, input_msg);
 
                 calc_ctx_t c_addr;
-                if (!find_free_calc_client(&c_addr)) {
-                    if (send_req_to_calc(client, input_msg, &c_addr.addr, &on_calc_proc, &on_calc_error)) {
+                if (!dc_balancer_find_free_calc_client(&c_addr)) {
+                    if (dc_balancer_send_job_to_calc(client, input_msg, &c_addr.addr, &dc_balancer_on_calc_proc, &dc_balancer_on_calc_error)) {
                         printf("SRV[%d]: send_req_to_calc - error!\r\n", c->id);
                         free(input_msg);
                     }
@@ -175,7 +178,7 @@ void on_read_complete(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 }
 
 
-void on_new_connection(uv_stream_t *server, int status) 
+static void dc_balancer_on_new_connection(uv_stream_t *server, int status) 
 {
     if (status < 0) {
         fprintf(stderr, "SRV: New connection error %s\n", uv_strerror(status));
@@ -183,20 +186,22 @@ void on_new_connection(uv_stream_t *server, int status)
     }
                               
     uv_tcp_t* client = malloc(sizeof(uv_tcp_t)); 
-    client->data = init_client_ctx();
+    assert(client);
+    client->data = dc_balancer_init_client_ctx();
 
     uv_tcp_init(uv_default_loop(), client);
 
     if (uv_accept(server, (uv_stream_t*)client) == 0) {
         uv_tcp_keepalive(client, 1, 50);
-        uv_read_start((uv_stream_t*)client, alloc_buffer, on_read_complete);
+        uv_read_start((uv_stream_t*)client, dc_balancer_alloc_buffer, dc_balancer_on_read_complete);
     } else {
-        uv_close((uv_handle_t*)client, on_close_complete);
+        uv_close((uv_handle_t*)client, dc_balancer_on_close_complete);
     }
 }
 
+////////////////////////////////////////////////////////////////////
 
-uint8_t start_uv_tcp_server(const uint16_t server_port)
+uint8_t dc_balancer_start_tcp_server(const uint16_t server_port)
 {
 	struct sockaddr_in addr;
 
@@ -204,7 +209,7 @@ uint8_t start_uv_tcp_server(const uint16_t server_port)
 	uv_ip4_addr("0.0.0.0", server_port, &addr);
 
 	uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
-	int r = uv_listen((uv_stream_t*)&server, MAX_CLIENT_COUNT, on_new_connection);
+	int r = uv_listen((uv_stream_t*)&server, MAX_CLIENT_COUNT, dc_balancer_on_new_connection);
 	if (r) {
 		fprintf(stderr, "Listen error %s\n", uv_strerror(r));
 		return 1;
