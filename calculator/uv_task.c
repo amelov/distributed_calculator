@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "../tools/mlist.h"
+#include "../tools/mstring.h"
 
 #include "calculate.h"
 #include "json_tool.h"
@@ -24,13 +25,13 @@ typedef struct calc_thread_t {
 
 
 
-void on_calc_work_cb(uv_work_t* req)
+static void dc_calc_on_calc_work_cb(uv_work_t* req)
 {
 	calc_thread_t* t_ctx = (calc_thread_t*)req->data;
 
 	if (t_ctx) {
 
-		if (!calculate(t_ctx->expression_str, &t_ctx->var, &t_ctx->result, &t_ctx->error_str)) {
+		if (!dc_calc_calculate(t_ctx->expression_str, &t_ctx->var, &t_ctx->result, &t_ctx->error_str)) {
 			;
 		} else {
 			printf("calc: ERROR \"%s\" -> %s\r\n", t_ctx->expression_str, t_ctx->error_str);
@@ -40,7 +41,7 @@ void on_calc_work_cb(uv_work_t* req)
 }
 
 
-void on_after_calc_work_cb(uv_work_t* req, int status)
+static void dc_calc_on_after_calc_work_cb(uv_work_t* req, int status)
 {
 	calc_thread_t* t_ctx = (calc_thread_t*)req->data;
 
@@ -78,10 +79,10 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 
 				p_task = list_next(p_task);
 			}
-			char *result_json = create_outgoing_json(&t_ctx->var, &sess);
+			char *result_json = dc_calc_create_outgoing_json(&t_ctx->var, &sess);
 			//printf("all task complete => %s!\r\n", result_json);
 
-			send_data_to_client(t_ctx->client, result_json);
+			dc_calc_send_data_to_client(t_ctx->client, result_json);
 			free(result_json);
 			stack_destroy(&sess.result);
 			stack_destroy(&sess.expression);
@@ -107,15 +108,14 @@ void on_after_calc_work_cb(uv_work_t* req, int status)
 //////////////////////////////////////////////////////////////////////////
 
 
-uint32_t input_json_msg_handler(uv_stream_t *client, const char* json_str)
+uint32_t dc_calc_input_json_msg_handler(uv_stream_t *client, const char* json_str)
 {
 	uint32_t r_code = 0;
 
 	mstack_t expression = {0};
 	var_store_t variable = {0};
 
-	if ( !parse_incoming_json(json_str, &expression, &variable) ) {
-
+	if ( !dc_calc_parse_incoming_json(json_str, &expression, &variable) ) {
 
 		list_t* calc_task_ctx = malloc(sizeof(*calc_task_ctx));
 
@@ -149,7 +149,7 @@ uint32_t input_json_msg_handler(uv_stream_t *client, const char* json_str)
 			if (work_hnd) {
 				work_hnd->data = list_data(p_list);
 
-				if (uv_queue_work(uv_default_loop(), work_hnd, on_calc_work_cb, on_after_calc_work_cb) == 0) {
+				if (uv_queue_work(uv_default_loop(), work_hnd, dc_calc_on_calc_work_cb, dc_calc_on_after_calc_work_cb) == 0) {
 					;
 				} else {
 					;

@@ -4,18 +4,12 @@
 
 #include "json_tool.h"
 #include <jansson.h>
-
-
-char *str_create_copy(const char* s)
-{
-	char *r_code = malloc(strlen(s) + 1);
-	strcpy(r_code, s);
-	return r_code;
-}
+#include "../tools/mstring.h"
 
 
 
-uint8_t parse_incoming_json(const char* in_msg, mstack_t* out_exp, var_store_t* variable)
+
+uint8_t dc_calc_parse_incoming_json(const char* in_msg, mstack_t* out_exp, var_store_t* variable)
 {
 	uint8_t r_code = 1;
 
@@ -84,7 +78,7 @@ uint8_t parse_incoming_json(const char* in_msg, mstack_t* out_exp, var_store_t* 
 }
 
 
-char* create_outgoing_json(var_store_t* var, session_data_t* sess)
+char* dc_calc_create_outgoing_json(var_store_t* var, session_data_t* sess)
 {
 	char* r_code = NULL;
 

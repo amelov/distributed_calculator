@@ -123,7 +123,7 @@ uint8_t calculate_RPN(ctx_t* ctx, var_store_t* var_store, NUM_t* result)
 //////////////////////////////////////////////////////////////////////////
 
 
-uint8_t calculate(char* input_str, var_store_t* var_store, NUM_t* res, char** err_str)
+uint8_t dc_calc_calculate(char* input_str, var_store_t* var_store, NUM_t* res, char** err_str)
 {
 	ctx_t ctx;
 	
@@ -131,7 +131,7 @@ uint8_t calculate(char* input_str, var_store_t* var_store, NUM_t* res, char** er
 
 	if (!init_ctx(&ctx)) {
 		
-		if (!convert_to_rpn(&ctx, input_str)) {
+		if (!dc_calc_convert_to_rpn(&ctx, input_str)) {
 		
 #ifdef DEBUG_PRINTF
 			uint32_t i, j;
@@ -185,7 +185,7 @@ void PRINT(mstack_t* s)
 #ifdef MAKE_TEST
 
 
-uint8_t calculate_TEST()
+uint8_t dc_calc_calculate_TEST()
 {
 
 	uint8_t r_code = 0;

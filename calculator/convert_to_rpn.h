@@ -9,9 +9,9 @@
 #include <stdint.h>
 #include "common.h"
 
-uint8_t convert_to_rpn(ctx_t* ctx, char* s);
+uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s);
 
 
 #ifdef MAKE_TEST
-	uint8_t convert_to_rpn_TEST();
+	uint8_t dc_calc_convert_to_rpn_TEST();
 #endif

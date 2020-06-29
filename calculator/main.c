@@ -17,8 +17,8 @@
 int main(int argc, char* argv[])
 {
 #if MAKE_TEST
-   	convert_to_rpn_TEST();
- 	calculate_TEST();
+   	dc_calc_convert_to_rpn_TEST();
+ 	dc_calc_calculate_TEST();
 #else 
 
  	uint16_t server_port = DEFAULT_SERVER_PORT;
@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
  		server_port = atoi(argv[1]);
  	}
 
-	if (!start_uv_tcp_server(server_port)) {
+	if (!dc_calc_start_tcp_server(server_port)) {
 		return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 	}
 

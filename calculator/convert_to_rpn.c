@@ -129,7 +129,7 @@ static int parse_item(char **p_s, item_t* i)
 
 
 
-uint8_t convert_to_rpn(ctx_t* ctx, char* s)
+uint8_t dc_calc_convert_to_rpn(ctx_t* ctx, char* s)
 {
 	item_t temp_item;
 
@@ -263,7 +263,7 @@ void get_result_string(ctx_t* c, mstack_t* out_stack)
 }
 
 
-uint8_t convert_to_rpn_TEST()
+uint8_t dc_calc_convert_to_rpn_TEST()
 {
 	uint32_t r_code = 0;
 	ctx_t ctx;
